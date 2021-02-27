@@ -4,12 +4,15 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/bitflags-455a5b9e6d84eb0f/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/cgmath-aacf2639faa01420/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/cgmath-bcda8eb03cb3fdfa/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/core-foundation-sys-410c88a1c43ba045/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/core-foundation-sys-470283616202615e/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/crc32fast-852f7c5e8fd34160/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/crossbeam-utils-d0c58edbf352676d/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/indexmap-cf890d96f26b05c6/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/libc-2377c611a77bdf8e/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/libc-903fd53e793f9976/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/log-cb9733ecd2ffb150/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/memchr-b35839b7f6486c4a/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/memoffset-ed9d74f28a67057f/out" isTestSource="false" />
@@ -18,6 +21,7 @@
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/num-iter-826e3eac2c0402ae/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/num-rational-ded932eff3b6e6b1/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/num-traits-a7e7dd3c91b92d07/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/objc_exception-5a191ddd2ffdcb4a/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/objc_exception-aa354137f822258b/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/proc-macro-hack-91ae7e1fda16c8c7/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/proc-macro-nested-dbd3b7fcf52bffed/out" isTestSource="false" />
@@ -28,8 +32,13 @@
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/rayon-72ad27d1f768ccd4/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/rayon-core-d5bb7544ad5ff81c/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/shaderc-sys-47192c7b53787d9e/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/shaderc-sys-906fbd82f5f8b5d3/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/spirv_cross-7c8fca1a9ddbfb0f/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/spirv_cross-9bf859faa4085571/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/spirv_cross-a6ff8dcb930d740b/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-1c360f59e68d0497/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-97c8fdd431ef44b6/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/wgpu-core-10af8d528ca7a3ee/out" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
