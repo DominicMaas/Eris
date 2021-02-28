@@ -1,5 +1,6 @@
 mod state;
 mod c_body;
+mod texture;
 
 use winit::{
     event::*,

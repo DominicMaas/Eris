@@ -1,8 +1,10 @@
+
 use winit::{
     event::*,
     event_loop::{EventLoop, ControlFlow},
     window::{Window, WindowBuilder},
 };
+use crate::texture;
 
 pub struct State {
     pub surface: wgpu::Surface,
@@ -12,6 +14,7 @@ pub struct State {
     pub swap_chain: wgpu::SwapChain,
     pub size: winit::dpi::PhysicalSize<u32>,
     pub render_pipeline: wgpu::RenderPipeline,
+    depth_texture: texture::Texture
 }
 
 impl State {
@@ -74,6 +77,12 @@ impl State {
                 module: &fs_module,
                 entry_point: "main",
             }),
+            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+                format: texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less, // 1.
+                stencil: wgpu::StencilStateDescriptor::default(), // 2.
+            }),
             rasterization_state: Some(
                 wgpu::RasterizationStateDescriptor {
                     front_face: wgpu::FrontFace::Ccw,
@@ -93,7 +102,6 @@ impl State {
                 },
             ],
             primitive_topology: wgpu::PrimitiveTopology::TriangleList, // 1.
-            depth_stencil_state: None, // 2.
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint16, // 3.
                 vertex_buffers: &[], // 4.
@@ -103,6 +111,8 @@ impl State {
             alpha_to_coverage_enabled: false, // 7.
         });
 
+        let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
+
         Self {
             surface,
             device,
@@ -110,7 +120,8 @@ impl State {
             sc_desc,
             swap_chain,
             size,
-            render_pipeline
+            render_pipeline,
+            depth_texture
         }
     }
 
@@ -119,6 +130,9 @@ impl State {
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+
+        // After the swapchain is recreated, we need to rebuild the depth texture
+        self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
@@ -154,7 +168,14 @@ impl State {
                         }
                     }
                 ],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                    attachment: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: true,
+                    }),
+                    stencil_ops: None,
+                }),
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
