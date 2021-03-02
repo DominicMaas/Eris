@@ -41,6 +41,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
+
+[[package]]
 name = "approx"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -119,6 +125,20 @@ name = "bytemuck"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bed57e2090563b83ba8f83366628ce535a7584c9afa4c9fc0612a03925c6df58"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e215f8c2f9f79cb53c8335e687ffd07d5bfcb6fe5fc80723762d0be46e7cc54"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "byteorder"
@@ -174,6 +194,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb6210b637171dfba4cda12e579ac6dc73f5165ad56133e5d72ef3131f320855"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "cocoa"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c54201c07dcf3a5ca33fececb8042aed767ee4bfd5a0235a8ceabcda956044b2"
+dependencies = [
+ "bitflags",
+ "block",
+ "cocoa-foundation",
+ "core-foundation 0.9.1",
+ "core-graphics 0.22.2",
+ "foreign-types",
+ "libc",
+ "objc",
 ]
 
 [[package]]
@@ -466,14 +502,21 @@ dependencies = [
 name = "eris"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bytemuck",
  "cgmath",
  "env_logger",
+ "fs_extra",
  "futures",
+ "glob",
  "image",
+ "imgui",
+ "imgui-wgpu",
+ "imgui-winit-support",
  "log",
  "shaderc",
  "wgpu",
- "winit",
+ "winit 0.24.0",
 ]
 
 [[package]]
@@ -496,6 +539,12 @@ name = "foreign-types-shared"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
+
+[[package]]
+name = "fs_extra"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2022715d62ab30faffd124d40b76f4134a550a87792276512b18d63272333394"
 
 [[package]]
 name = "fuchsia-zircon"
@@ -771,6 +820,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -808,6 +863,49 @@ dependencies = [
  "png",
  "scoped_threadpool",
  "tiff",
+]
+
+[[package]]
+name = "imgui"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92a0077d3bb882960467aed0bc6eaf5d4033cb9b61bfdbb99c32d1288380032f"
+dependencies = [
+ "bitflags",
+ "imgui-sys",
+ "parking_lot",
+]
+
+[[package]]
+name = "imgui-sys"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0522b693da8a64322afbb32c63c04f39d9b9435cc75199d630207eee48886fc1"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "imgui-wgpu"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8017f74f8880049c1c3fc055868486a610178ab93ad18eadaf5b0bb52f738365"
+dependencies = [
+ "bytemuck",
+ "imgui",
+ "log",
+ "smallvec",
+ "wgpu",
+]
+
+[[package]]
+name = "imgui-winit-support"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e0fc247afc385ed9cd26860cdb7fae988d5c7e2ad1d70c70aef728ce9b78e85"
+dependencies = [
+ "imgui",
+ "winit 0.23.0",
 ]
 
 [[package]]
@@ -1935,12 +2033,43 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "winit"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5bc559da567d8aa671bbcd08304d49e982c7bf2cb91e10288b9188931c1b772"
+dependencies = [
+ "bitflags",
+ "cocoa 0.23.0",
+ "core-foundation 0.9.1",
+ "core-graphics 0.22.2",
+ "core-video-sys",
+ "dispatch",
+ "instant",
+ "lazy_static",
+ "libc",
+ "log",
+ "mio",
+ "mio-extras",
+ "ndk",
+ "ndk-glue",
+ "ndk-sys",
+ "objc",
+ "parking_lot",
+ "percent-encoding",
+ "raw-window-handle",
+ "smithay-client-toolkit",
+ "wayland-client",
+ "winapi 0.3.9",
+ "x11-dl",
+]
+
+[[package]]
+name = "winit"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da4eda6fce0eb84bd0a33e3c8794eb902e1033d0a1d5a31bc4f19b1b4bbff597"
 dependencies = [
  "bitflags",
- "cocoa",
+ "cocoa 0.24.0",
  "core-foundation 0.9.1",
  "core-graphics 0.22.2",
  "core-video-sys",

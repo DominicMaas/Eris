@@ -4,7 +4,8 @@ use winit::{
     event_loop::{EventLoop, ControlFlow},
     window::{Window, WindowBuilder},
 };
-use crate::texture;
+
+use crate::{texture, uniform_buffer, render_pipeline};
 
 pub struct State {
     pub surface: wgpu::Surface,
@@ -13,8 +14,9 @@ pub struct State {
     pub sc_desc: wgpu::SwapChainDescriptor,
     pub swap_chain: wgpu::SwapChain,
     pub size: winit::dpi::PhysicalSize<u32>,
-    pub render_pipeline: wgpu::RenderPipeline,
-    depth_texture: texture::Texture
+    pub render_pipeline: render_pipeline::RenderPipeline,
+    depth_texture: texture::Texture,
+    uniform_buffer: uniform_buffer::UniformBuffer
 }
 
 impl State {
@@ -51,67 +53,15 @@ impl State {
 
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let vs_src = include_str!("shaders/shader.vert");
-        let fs_src = include_str!("shaders/shader.frag");
-        let mut compiler = shaderc::Compiler::new().unwrap();
-        let vs_spirv = compiler.compile_into_spirv(vs_src, shaderc::ShaderKind::Vertex, "shader.vert", "main", None).unwrap();
-        let fs_spirv = compiler.compile_into_spirv(fs_src, shaderc::ShaderKind::Fragment, "shader.frag", "main", None).unwrap();
-        let vs_module = device.create_shader_module(wgpu::util::make_spirv(&vs_spirv.as_binary_u8()));
-        let fs_module = device.create_shader_module(wgpu::util::make_spirv(&fs_spirv.as_binary_u8()));
+        let render_pipeline =
+            render_pipeline::RenderPipeline::new(&device, &sc_desc, "Main Pipeline",
+                                                 wgpu::include_spirv!("shaders/shader.vert.spv"),
+                                                 wgpu::include_spirv!("shaders/shader.frag.spv"));
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            });
-
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &vs_module,
-                entry_point: "main", // 1.
-            },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor { // 2.
-                module: &fs_module,
-                entry_point: "main",
-            }),
-            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: texture::Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less, // 1.
-                stencil: wgpu::StencilStateDescriptor::default(), // 2.
-            }),
-            rasterization_state: Some(
-                wgpu::RasterizationStateDescriptor {
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: wgpu::CullMode::Back,
-                    depth_bias: 0,
-                    depth_bias_slope_scale: 0.0,
-                    depth_bias_clamp: 0.0,
-                    clamp_depth: false,
-                }
-            ),
-            color_states: &[
-                wgpu::ColorStateDescriptor {
-                    format: sc_desc.format,
-                    color_blend: wgpu::BlendDescriptor::REPLACE,
-                    alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                    write_mask: wgpu::ColorWrite::ALL,
-                },
-            ],
-            primitive_topology: wgpu::PrimitiveTopology::TriangleList, // 1.
-            vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint16, // 3.
-                vertex_buffers: &[], // 4.
-            },
-            sample_count: 1, // 5.
-            sample_mask: !0, // 6.
-            alpha_to_coverage_enabled: false, // 7.
-        });
 
         let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
+
+        let uniform_buffer = uniform_buffer::UniformBuffer::new(&device);
 
         Self {
             surface,
@@ -121,7 +71,8 @@ impl State {
             swap_chain,
             size,
             render_pipeline,
-            depth_texture
+            depth_texture,
+            uniform_buffer
         }
     }
 
@@ -178,7 +129,7 @@ impl State {
                 }),
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_pipeline(&self.render_pipeline.pipeline);
             render_pass.draw(0..3, 0..1);
         }
 

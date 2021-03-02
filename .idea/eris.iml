@@ -39,6 +39,10 @@
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-1c360f59e68d0497/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-97c8fdd431ef44b6/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/wgpu-core-10af8d528ca7a3ee/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/imgui-sys-5c7f66a7f3a61ec4/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/winit-d7580f413ee25bc1/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/anyhow-9e9a208d119f6761/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/eris-dfbae3e48cabc2b4/out" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
