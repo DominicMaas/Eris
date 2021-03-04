@@ -145,12 +145,11 @@ impl State {
         //vertices.push(Vertex::with_color(cgmath::Vector3::new(0.35966998, -0.3473291, 0.0), cgmath::Vector3::new(0.5, 0.0, 0.5)));
         //vertices.push(Vertex::with_color(cgmath::Vector3::new(0.44147372, 0.2347359, 0.0), cgmath::Vector3::new(0.5, 0.0, 0.5)));
 
-        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(-0.0868241, 0.49240386, 0.0), cgmath::Vector2::new(0.4131759, 0.99240386)));
-        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(-0.49513406, 0.06958647, 0.0), cgmath::Vector2::new(0.0048659444, 0.56958646)));
-        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(-0.21918549, -0.44939706, 0.0), cgmath::Vector2::new(0.28081453, 0.050602943)));
-        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(0.35966998, -0.3473291, 0.0), cgmath::Vector2::new(0.85967, 0.15267089)));
-        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(0.44147372, 0.2347359, 0.0), cgmath::Vector2::new(0.9414737, 0.7347359)));
-
+        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(-0.0868241, 0.49240386, 0.0), cgmath::Vector3::new(1.0,1.0,1.0), cgmath::Vector2::new(0.4131759, 0.99240386)));
+        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(-0.49513406, 0.06958647, 0.0), cgmath::Vector3::new(1.0,1.0,1.0),cgmath::Vector2::new(0.0048659444, 0.56958646)));
+        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(-0.21918549, -0.44939706, 0.0), cgmath::Vector3::new(1.0,1.0,1.0),cgmath::Vector2::new(0.28081453, 0.050602943)));
+        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(0.35966998, -0.3473291, 0.0), cgmath::Vector3::new(1.0,1.0,1.0),cgmath::Vector2::new(0.85967, 0.15267089)));
+        vertices.push(Vertex::with_tex_coords(cgmath::Vector3::new(0.44147372, 0.2347359, 0.0), cgmath::Vector3::new(1.0,1.0,1.0),cgmath::Vector2::new(0.9414737, 0.7347359)));
 
         indices.push(0);
         indices.push(1);
@@ -298,13 +297,11 @@ impl State {
                 }),
             });
 
-            //render_pass.set_pipeline(&self.render_pipeline);
-            //render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            //render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
 
-            //render_pass.draw_mesh(&self.mesh);
-
-
+            render_pass.draw_mesh(&self.mesh);
 
             render_pass.set_pipeline(&self.c_body_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
