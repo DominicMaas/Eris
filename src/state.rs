@@ -1,12 +1,10 @@
-use winit::{
-    event::*,
-    window::{Window},
-};
+use winit::{event::*, window::Window};
 
 use crate::c_body::CBody;
 use crate::camera::Camera;
 use crate::camera_controller::CameraController;
 use crate::mesh::{DrawMesh, Mesh};
+use crate::uniform_buffer::UniformBuffer;
 use crate::utils::Vertex;
 use crate::{render_pipeline, texture, uniform_buffer};
 
@@ -21,9 +19,9 @@ pub struct State {
     c_body_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
     uniform_buffer: uniform_buffer::UniformBuffer<uniform_buffer::CameraUniform>,
+    mesh_uniform_buffer: uniform_buffer::UniformBuffer<uniform_buffer::ModelUniform>,
     mesh: Mesh,
     diffuse_bind_group: wgpu::BindGroup,
-    uniform_bind_group: wgpu::BindGroup,
     camera: Camera,
     camera_controller: CameraController,
     bodies: Vec<CBody>,
@@ -90,25 +88,38 @@ impl State {
                 label: Some("texture_bind_group_layout"),
             });
 
-        let uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("uniform_bind_group_layout"),
-            });
+        // The main camera
+        let camera = Camera {
+            // position the camera one unit up and 2 units back
+            // +z is out of the screen
+            eye: (0.0, 1.0, 2.0).into(),
+            // have it look at the origin
+            target: (0.0, 0.0, 0.0).into(),
+            // which way is "up"
+            up: cgmath::Vector3::unit_y(),
+            aspect: sc_desc.width as f32 / sc_desc.height as f32,
+            fovy: 70.0,
+            znear: 0.1,
+            zfar: 100.0,
+        };
+
+        // The uniform buffer
+        let uniform_buffer = uniform_buffer::UniformBuffer::new(
+            uniform_buffer::CameraUniform {
+                view_proj: camera.build_view_projection_matrix(),
+            },
+            &device,
+        );
 
         // Pipeline layout
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
+                bind_group_layouts: &[
+                    &texture_bind_group_layout,
+                    &uniform_buffer::UniformBufferUtils::create_bind_group_layout(&device),
+                    &uniform_buffer::UniformBufferUtils::create_bind_group_layout(&device),
+                ],
                 push_constant_ranges: &[],
             });
 
@@ -181,34 +192,17 @@ impl State {
         indices.push(4);
 
         let mesh = Mesh::new(vertices, indices, &device);
+        let mesh_uniform_buffer = uniform_buffer::UniformBuffer::new(
+            uniform_buffer::ModelUniform {
+                model: cgmath::Matrix4::from_translation(cgmath::Vector3::new(0.0, 0.0, 0.0)),
+            },
+            &device,
+        );
 
         // The texture (temp)
         let diffuse_bytes = include_bytes!("images/happy-tree.png"); // CHANGED!
         let diffuse_texture =
             texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap(); // CHANGED!
-
-        // The main camera
-        let camera = Camera {
-            // position the camera one unit up and 2 units back
-            // +z is out of the screen
-            eye: (0.0, 1.0, 2.0).into(),
-            // have it look at the origin
-            target: (0.0, 0.0, 0.0).into(),
-            // which way is "up"
-            up: cgmath::Vector3::unit_y(),
-            aspect: sc_desc.width as f32 / sc_desc.height as f32,
-            fovy: 70.0,
-            znear: 0.1,
-            zfar: 100.0,
-        };
-
-        // The uniform buffer
-        let uniform_buffer = uniform_buffer::UniformBuffer::new(
-            uniform_buffer::CameraUniform {
-                view_proj: camera.build_view_projection_matrix(),
-            },
-            &device,
-        );
 
         // ----- BIND GROUPS ----- //
         let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -226,21 +220,29 @@ impl State {
             label: Some("diffuse_bind_group"),
         });
 
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &uniform_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(uniform_buffer.buffer.slice(..)),
-            }],
-            label: Some("uniform_bind_group"),
-        });
-
         let camera_controller = CameraController::new(0.2);
 
         let mut bodies = Vec::new();
 
-        let c_body_earth = CBody::new(1.0, 1.0, cgmath::Vector3::new(0.0, 0.0, 0.0), &device);
+        let c_body_earth = CBody::new(
+            1.0,
+            4.0,
+            cgmath::Vector3::new(0.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, 0.0),
+            &device,
+        );
+
+        let c_body_moon = CBody::new(
+            1.0,
+            0.5,
+            cgmath::Vector3::new(8.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, 0.0),
+            &device,
+        );
+
+
         bodies.push(c_body_earth);
+        bodies.push(c_body_moon);
 
         Self {
             surface,
@@ -254,8 +256,8 @@ impl State {
             depth_texture,
             uniform_buffer,
             mesh,
+            mesh_uniform_buffer,
             diffuse_bind_group,
-            uniform_bind_group,
             camera,
             camera_controller,
             bodies,
@@ -324,16 +326,18 @@ impl State {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.uniform_buffer.bind_group, &[]);
+            render_pass.set_bind_group(2, &self.mesh_uniform_buffer.bind_group, &[]);
 
             render_pass.draw_mesh(&self.mesh);
 
             // Render bodies
             render_pass.set_pipeline(&self.c_body_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.uniform_buffer.bind_group, &[]);
 
             for body in self.bodies.iter() {
+                render_pass.set_bind_group(2, &body.uniform_buffer.bind_group, &[]);
                 render_pass.draw_mesh(&body.mesh);
             }
         }

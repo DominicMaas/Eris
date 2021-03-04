@@ -15,12 +15,11 @@ pub struct CBody {
 }
 
 impl CBody {
-    pub fn new(mass: f32, radius: f32, velocity: Vector3<f32>, device: &wgpu::Device) -> Self {
+    pub fn new(mass: f32, radius: f32, position: Vector3<f32>, velocity: Vector3<f32>, device: &wgpu::Device) -> Self {
         // Create the mesh for this body
         let sector_count: u16 = 38;
         let stack_count: u16 = 24;
         let mesh = Self::build_mesh(radius, sector_count, stack_count, device);
-        let position: Vector3<f32> = Vector3::new(0.0,0.0,0.0);
         let rotation: Quaternion<f32> = Quaternion::new(0.0, 0.0, 0.0, 0.0);
 
         let uniform_data = ModelUniform {

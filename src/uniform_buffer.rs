@@ -25,6 +25,7 @@ where
 {
     pub data: T,
     pub buffer: wgpu::Buffer,
+    pub bind_group: wgpu::BindGroup
 }
 
 impl<T: Copy + bytemuck::Pod + bytemuck::Zeroable> UniformBuffer<T> {
@@ -37,6 +38,36 @@ impl<T: Copy + bytemuck::Pod + bytemuck::Zeroable> UniformBuffer<T> {
             usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::UNIFORM,
         });
 
-        Self { data, buffer }
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &UniformBufferUtils::create_bind_group_layout(&device),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(buffer.slice(..)),
+            }],
+            label: Some("uniform_bind_group"),
+        });
+
+        Self { data, buffer, bind_group }
+    }
+}
+
+pub struct UniformBufferUtils { }
+impl UniformBufferUtils {
+    pub fn create_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        let bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("uniform_bind_group_layout"),
+            });
+
+        bind_group_layout
     }
 }
