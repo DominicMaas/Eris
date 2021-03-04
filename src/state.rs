@@ -7,6 +7,7 @@ use winit::{
 
 use crate::{texture, uniform_buffer, render_pipeline};
 use crate::mesh::{Mesh, DrawMesh};
+use crate::utils::Vertex;
 
 pub struct State {
     pub surface: wgpu::Surface,
@@ -65,7 +66,14 @@ impl State {
 
         let uniform_buffer = uniform_buffer::UniformBuffer::new(&device);
 
-        let mesh = Mesh::new(&device);
+        // Temp, this will be passed in as a type of vector or something
+        let mut vertices: Vec<Vertex> = Vec::new();
+
+        vertices.push(Vertex { position: cgmath::Vector3::new(0.0, 0.5, 0.0), color: cgmath::Vector3::new(1.0, 0.0, 0.0) });
+        vertices.push(Vertex { position: cgmath::Vector3::new(-0.5, -0.5, 0.0), color: cgmath::Vector3::new(0.0, 1.0, 0.0) });
+        vertices.push(Vertex { position: cgmath::Vector3::new(0.5, -0.5, 0.0), color: cgmath::Vector3::new(0.0, 0.0, 1.0) });
+
+        let mesh = Mesh::new(vertices, &device);
 
         Self {
             surface,

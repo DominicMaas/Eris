@@ -7,23 +7,18 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(device: &wgpu::Device) -> Self {
-        // Temp, this will be passed in as a type of vector or something
-        const VERTICES: &[Vertex] = &[
-            Vertex { position: cgmath::Vector3::new(0.0, 0.5, 0.0), color: cgmath::Vector3::new(1.0, 0.0, 0.0) },
-            Vertex { position: cgmath::Vector3::new(-0.5, -0.5, 0.0), color: cgmath::Vector3::new(0.0, 1.0, 0.0) },
-            Vertex { position: cgmath::Vector3::new(0.5, -0.5, 0.0), color: cgmath::Vector3::new(0.0, 0.0, 1.0) },
-        ];
-
+    pub fn new(vertices: Vec<Vertex>, device: &wgpu::Device) -> Self {
+        // Create a vertex buffer using the vertices
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
+                contents: bytemuck::cast_slice(vertices.as_slice()),
                 usage: wgpu::BufferUsage::VERTEX,
             }
         );
 
-        let num_vertices = VERTICES.len() as u32;
+        // We need this for rendering
+        let num_vertices = vertices.len() as u32;
 
         Self {
             vertex_buffer,
