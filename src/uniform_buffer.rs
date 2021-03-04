@@ -3,8 +3,8 @@ use wgpu::util::{BufferInitDescriptor, DeviceExt};
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 // The actual data to be stored in the GPU
-struct UniformData {
-    view_proj: cgmath::Matrix4<f32> // 4x4 matrix
+pub struct UniformData {
+    pub view_proj: cgmath::Matrix4<f32> // 4x4 matrix
 }
 
 unsafe impl bytemuck::Zeroable for UniformData {}
@@ -12,8 +12,8 @@ unsafe impl bytemuck::Pod for UniformData {}
 
 // A holder for a uniform buffer, contains the data and raw buffer
 pub struct UniformBuffer {
-    data: UniformData,
-    buffer: wgpu::Buffer
+    pub data: UniformData,
+    pub buffer: wgpu::Buffer
 }
 
 impl UniformBuffer {

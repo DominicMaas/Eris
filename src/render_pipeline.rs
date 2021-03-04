@@ -3,6 +3,7 @@ use anyhow::*;
 use crate::utils::Vertex;
 
 pub struct RenderPipelineBuilder<'a> {
+    layout: Option<&'a wgpu::PipelineLayout>,
     vertex_shader_source: Option<wgpu::ShaderModuleSource<'a>>,
     fragment_shader_source: Option<wgpu::ShaderModuleSource<'a>>,
     texture_format: wgpu::TextureFormat,
@@ -11,11 +12,17 @@ pub struct RenderPipelineBuilder<'a> {
 impl<'a> RenderPipelineBuilder<'a> {
     pub fn new(texture_format: wgpu::TextureFormat, pipeline_name: &'a str) -> RenderPipelineBuilder {
         Self {
+            layout: None,
             vertex_shader_source: None,
             fragment_shader_source: None,
             texture_format,
             pipeline_name
         }
+    }
+
+    pub fn with_layout(&mut self, layout: &'a wgpu::PipelineLayout) ->& mut Self {
+        self.layout = Some(layout);
+        self
     }
 
     pub fn with_vertex_shader(&mut self, vertex_shader: wgpu::ShaderModuleSource<'a>) -> &mut Self {
@@ -29,6 +36,12 @@ impl<'a> RenderPipelineBuilder<'a> {
     }
 
     pub fn build(&mut self, device: &wgpu::Device) -> Result<wgpu::RenderPipeline> {
+        // Ensure layout
+        if self.layout.is_none() {
+            bail!("No pipeline layout was supplied!");
+        }
+        let layout = self.layout.unwrap();
+
         // Ensure vertex
         if self.vertex_shader_source.is_none() {
             bail!("No vertex shader supplied!");
@@ -45,19 +58,11 @@ impl<'a> RenderPipelineBuilder<'a> {
         let fs_module = device.create_shader_module(self.fragment_shader_source
             .take().context("Please include a fragment shader")?);
 
-        // Pipeline layout
-        let pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            });
-
         // Create the actual pipeline
         let pipeline =
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(self.pipeline_name),
-                layout: Some(&pipeline_layout),
+                layout: Some(&layout),
                 vertex_stage: wgpu::ProgrammableStageDescriptor {
                     module: &vs_module,
                     entry_point: "main",

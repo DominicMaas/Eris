@@ -6,6 +6,7 @@ mod camera;
 mod render_pipeline;
 mod mesh;
 mod utils;
+mod camera_controller;
 
 use winit::{
     event::*,
