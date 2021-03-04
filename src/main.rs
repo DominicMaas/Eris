@@ -1,22 +1,20 @@
-mod state;
 mod c_body;
+mod camera;
+mod camera_controller;
+mod mesh;
+mod render_pipeline;
+mod state;
 mod texture;
 mod uniform_buffer;
-mod camera;
-mod render_pipeline;
-mod mesh;
 mod utils;
-mod camera_controller;
 
 use winit::{
     event::*,
-    event_loop::{EventLoop, ControlFlow},
-    window::{Window, WindowBuilder},
+    event_loop::{ControlFlow, EventLoop},
+    window::{WindowBuilder},
 };
 
 use futures::executor::block_on;
-use imgui::FontSource;
-use imgui_wgpu::{RendererConfig, Renderer};
 
 fn main() {
     env_logger::init();
@@ -58,7 +56,6 @@ fn main() {
     //};
     //let renderer = Renderer::new(&mut imgui, &display.device, &display.queue, renderer_config);
 
-
     let mut state = block_on(state::State::new(&window));
 
     event_loop.run(move |event, _, control_flow| {
@@ -85,33 +82,31 @@ fn main() {
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == window.id() => if !state.input(event) { // UPDATED!
-                match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+            } if window_id == window.id() => {
+                if !state.input(event) {
+                    // UPDATED!
+                    match event {
+                        WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
 
-                    WindowEvent::KeyboardInput {
-                        input,
-                        ..
-                    } => {
-                        match input {
+                        WindowEvent::KeyboardInput { input, .. } => match input {
                             KeyboardInput {
                                 state: ElementState::Pressed,
                                 virtual_keycode: Some(VirtualKeyCode::Escape),
                                 ..
                             } => *control_flow = ControlFlow::Exit,
                             _ => {}
+                        },
+
+                        WindowEvent::Resized(physical_size) => {
+                            state.resize(*physical_size);
                         }
-                    }
 
-                    WindowEvent::Resized(physical_size) => {
-                        state.resize(*physical_size);
-                    }
+                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                            state.resize(**new_inner_size);
+                        }
 
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        state.resize(**new_inner_size);
+                        _ => {}
                     }
-
-                    _ => {}
                 }
             }
             _ => {}

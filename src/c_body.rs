@@ -1,14 +1,17 @@
-use cgmath::prelude::*;
-use cgmath::Vector3;
+use cgmath::{Vector3, Quaternion};
 use crate::mesh::Mesh;
 use crate::utils::Vertex;
 use cgmath::num_traits::FloatConst;
+use crate::uniform_buffer::{UniformBuffer, ModelUniform};
 
 pub struct CBody {
     pub mass: f32,
     pub radius: f32,
     pub velocity: Vector3<f32>,
+    pub position: Vector3<f32>,
+    pub rotation: Quaternion<f32>,
     pub mesh: Mesh,
+    pub uniform_buffer: UniformBuffer<ModelUniform>,
 }
 
 impl CBody {
@@ -17,12 +20,23 @@ impl CBody {
         let sector_count: u16 = 38;
         let stack_count: u16 = 24;
         let mesh = Self::build_mesh(radius, sector_count, stack_count, device);
+        let position: Vector3<f32> = Vector3::new(0.0,0.0,0.0);
+        let rotation: Quaternion<f32> = Quaternion::new(0.0, 0.0, 0.0, 0.0);
+
+        let uniform_data = ModelUniform {
+            model: cgmath::Matrix4::from_translation(position) * cgmath::Matrix4::from(rotation)
+        };
+
+        let uniform_buffer = UniformBuffer::new(uniform_data, device);
 
         Self {
             mass,
             radius,
             velocity,
-            mesh
+            position,
+            rotation,
+            mesh,
+            uniform_buffer
         }
     }
 
@@ -42,7 +56,7 @@ impl CBody {
         let mut nx: f32;
         let mut ny: f32;
         let mut nz: f32;
-        let mut length_inv: f32 = 1.0 / radius;
+        let length_inv: f32 = 1.0 / radius;
 
         // vertex texCoord
         let mut s: f32;
