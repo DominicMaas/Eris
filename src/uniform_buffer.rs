@@ -1,7 +1,7 @@
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 // The actual data to be stored in the GPU
 struct UniformData {
     view_proj: cgmath::Matrix4<f32> // 4x4 matrix

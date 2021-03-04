@@ -6,6 +6,7 @@ use winit::{
 };
 
 use crate::{texture, uniform_buffer, render_pipeline};
+use crate::mesh::{Mesh, DrawMesh};
 
 pub struct State {
     pub surface: wgpu::Surface,
@@ -14,9 +15,10 @@ pub struct State {
     pub sc_desc: wgpu::SwapChainDescriptor,
     pub swap_chain: wgpu::SwapChain,
     pub size: winit::dpi::PhysicalSize<u32>,
-    pub render_pipeline: render_pipeline::RenderPipeline,
+    pub render_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
-    uniform_buffer: uniform_buffer::UniformBuffer
+    uniform_buffer: uniform_buffer::UniformBuffer,
+    mesh: Mesh,
 }
 
 impl State {
@@ -53,15 +55,17 @@ impl State {
 
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let render_pipeline =
-            render_pipeline::RenderPipeline::new(&device, &sc_desc, "Main Pipeline",
-                                                 wgpu::include_spirv!("shaders/shader.vert.spv"),
-                                                 wgpu::include_spirv!("shaders/shader.frag.spv"));
-
+        let render_pipeline = render_pipeline::RenderPipelineBuilder::new(sc_desc.format, "Main Pipeline")
+            .with_vertex_shader(wgpu::include_spirv!("shaders/shader.vert.spv"))
+            .with_fragment_shader(wgpu::include_spirv!("shaders/shader.frag.spv"))
+            .build(&device)
+            .unwrap();
 
         let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
         let uniform_buffer = uniform_buffer::UniformBuffer::new(&device);
+
+        let mesh = Mesh::new(&device);
 
         Self {
             surface,
@@ -72,7 +76,8 @@ impl State {
             size,
             render_pipeline,
             depth_texture,
-            uniform_buffer
+            uniform_buffer,
+            mesh
         }
     }
 
@@ -129,8 +134,8 @@ impl State {
                 }),
             });
 
-            render_pass.set_pipeline(&self.render_pipeline.pipeline);
-            render_pass.draw(0..3, 0..1);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw_mesh(&self.mesh);
         }
 
         // submit will accept anything that implements IntoIter

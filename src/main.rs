@@ -4,6 +4,8 @@ mod texture;
 mod uniform_buffer;
 mod camera;
 mod render_pipeline;
+mod mesh;
+mod utils;
 
 use winit::{
     event::*,
