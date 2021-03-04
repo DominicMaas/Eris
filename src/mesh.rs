@@ -4,7 +4,8 @@ use wgpu::util::DeviceExt;
 pub struct Mesh {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    num_indices: u32
+    num_indices: u32,
+    num_vertices: u32
 }
 
 impl Mesh {
@@ -29,11 +30,13 @@ impl Mesh {
 
         // We need this for rendering
         let num_indices = indices.len() as u32;
+        let num_vertices = vertices.len() as u32;
 
         Self {
             vertex_buffer,
             index_buffer,
-            num_indices
+            num_indices,
+            num_vertices
         }
     }
 }
@@ -47,8 +50,12 @@ impl<'a, 'b> DrawMesh<'a, 'b> for wgpu::RenderPass<'a>
     where 'b: 'a, {
     fn draw_mesh(&mut self, mesh: &'b Mesh) {
         self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-        self.set_index_buffer(mesh.index_buffer.slice(..));
 
-        self.draw_indexed(0..mesh.num_indices, 0, 0..1);
+        if mesh.num_indices == 0 {
+            self.draw(0..mesh.num_vertices, 0..1)
+        } else {
+            self.set_index_buffer(mesh.index_buffer.slice(..));
+            self.draw_indexed(0..mesh.num_indices, 0, 0..1);
+        }
     }
 }

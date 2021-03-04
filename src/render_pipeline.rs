@@ -7,7 +7,8 @@ pub struct RenderPipelineBuilder<'a> {
     vertex_shader_source: Option<wgpu::ShaderModuleSource<'a>>,
     fragment_shader_source: Option<wgpu::ShaderModuleSource<'a>>,
     texture_format: wgpu::TextureFormat,
-    pipeline_name: &'a str
+    pipeline_name: &'a str,
+    primitive_topology: wgpu::PrimitiveTopology
 }
 impl<'a> RenderPipelineBuilder<'a> {
     pub fn new(texture_format: wgpu::TextureFormat, pipeline_name: &'a str) -> RenderPipelineBuilder {
@@ -16,7 +17,8 @@ impl<'a> RenderPipelineBuilder<'a> {
             vertex_shader_source: None,
             fragment_shader_source: None,
             texture_format,
-            pipeline_name
+            pipeline_name,
+            primitive_topology: wgpu::PrimitiveTopology::TriangleList
         }
     }
 
@@ -32,6 +34,11 @@ impl<'a> RenderPipelineBuilder<'a> {
 
     pub fn with_fragment_shader(&mut self, fragment_shader: wgpu::ShaderModuleSource<'a>) -> &mut Self {
         self.fragment_shader_source = Some(fragment_shader);
+        self
+    }
+
+    pub fn with_topology(&mut self, topology: wgpu::PrimitiveTopology) -> &mut Self {
+        self.primitive_topology = topology;
         self
     }
 
@@ -81,7 +88,7 @@ impl<'a> RenderPipelineBuilder<'a> {
                         clamp_depth: false,
                     }
                 ),
-                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+                primitive_topology: self.primitive_topology,
                 color_states: &[
                     wgpu::ColorStateDescriptor {
                         format: self.texture_format,

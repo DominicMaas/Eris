@@ -11,6 +11,7 @@ use crate::utils::Vertex;
 use crate::camera::Camera;
 use crate::uniform_buffer::UniformData;
 use crate::camera_controller::CameraController;
+use crate::c_body::CBody;
 
 pub struct State {
     pub surface: wgpu::Surface,
@@ -20,6 +21,7 @@ pub struct State {
     pub swap_chain: wgpu::SwapChain,
     pub size: winit::dpi::PhysicalSize<u32>,
     pub render_pipeline: wgpu::RenderPipeline,
+    c_body_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
     uniform_buffer: uniform_buffer::UniformBuffer,
     mesh: Mesh,
@@ -27,6 +29,7 @@ pub struct State {
     uniform_bind_group: wgpu::BindGroup,
     camera: Camera,
     camera_controller: CameraController,
+    c_body_earth: CBody
 }
 
 impl State {
@@ -120,6 +123,14 @@ impl State {
             .build(&device)
             .unwrap();
 
+        let c_body_pipeline = render_pipeline::RenderPipelineBuilder::new(sc_desc.format, "C Body Pipeline")
+            .with_vertex_shader(wgpu::include_spirv!("shaders/c_body_shader.vert.spv"))
+            .with_fragment_shader(wgpu::include_spirv!("shaders/c_body_shader.frag.spv"))
+            .with_layout(&render_pipeline_layout)
+            .with_topology(wgpu::PrimitiveTopology::LineList)
+            .build(&device)
+            .unwrap();
+
         let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
 
@@ -169,7 +180,7 @@ impl State {
             // which way is "up"
             up: cgmath::Vector3::unit_y(),
             aspect: sc_desc.width as f32 / sc_desc.height as f32,
-            fovy: 45.0,
+            fovy: 70.0,
             znear: 0.1,
             zfar: 100.0,
         };
@@ -210,6 +221,8 @@ impl State {
 
         let camera_controller = CameraController::new(0.2);
 
+        let c_body_earth = CBody::new(1.0, 1.0, cgmath::Vector3::new(0.0,0.0,0.0), &device);
+
         Self {
             surface,
             device,
@@ -218,13 +231,15 @@ impl State {
             swap_chain,
             size,
             render_pipeline,
+            c_body_pipeline,
             depth_texture,
             uniform_buffer,
             mesh,
             diffuse_bind_group,
             uniform_bind_group,
             camera,
-            camera_controller
+            camera_controller,
+            c_body_earth
         }
     }
 
@@ -264,9 +279,9 @@ impl State {
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.1,
-                                g: 0.2,
-                                b: 0.3,
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
                                 a: 1.0,
                             }),
                             store: true,
@@ -283,12 +298,19 @@ impl State {
                 }),
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
+            //render_pass.set_pipeline(&self.render_pipeline);
+            //render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            //render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+
+            //render_pass.draw_mesh(&self.mesh);
+
+
+
+            render_pass.set_pipeline(&self.c_body_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
 
-
-            render_pass.draw_mesh(&self.mesh);
+            render_pass.draw_mesh(&self.c_body_earth.mesh);
         }
 
         // submit will accept anything that implements IntoIter
