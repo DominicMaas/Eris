@@ -19,7 +19,6 @@ pub struct State {
     pub render_pipeline: wgpu::RenderPipeline,
     c_body_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
-    sun_texture: texture::Texture,
     uniform_buffer: uniform_buffer::UniformBuffer<uniform_buffer::CameraUniform>,
     camera: Camera,
     camera_controller: CameraController,
@@ -68,7 +67,7 @@ impl State {
         let camera = Camera {
             // position the camera one unit up and 2 units back
             // +z is out of the screen
-            eye: (0.0, 50.0, 50.0).into(),
+            eye: (0.0, 150.0, 150.0).into(),
             // have it look at the origin
             target: (0.0, 0.0, 0.0).into(),
             // which way is "up"
@@ -119,28 +118,64 @@ impl State {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
-        let sun_texture = texture::Texture::from_bytes(
-            &device,
-            &queue,
-            include_bytes!("images/happy-tree.png"),
-            "happy-tree.png",
-        )
-        .unwrap(); // CHANGED!
-
-        // ----- BIND GROUPS ----- //
-
         let camera_controller = CameraController::new(10.0);
 
         let mut bodies = Vec::new();
 
+        let sun_texture = texture::Texture::from_bytes(
+            &device,
+            &queue,
+            include_bytes!("images/sun.png"),
+            "sun.png",
+        ).unwrap();
+
         let sun = CBody::new(
             0,
-            100_000.0,
-            20.0,
+            10000000.0,
+            30.0,
             cgmath::Vector3::new(0.0, 0.0, 0.0),
             cgmath::Vector3::new(0.0, 0.0, 0.0),
+            sun_texture,
             &device,
         );
+
+        print!("Sun Escape Velocity: {}m/s", sun.escape_velocity());
+
+        let inner_texture = texture::Texture::from_bytes(
+            &device,
+            &queue,
+            include_bytes!("images/earth.png"),
+            "earth.png",
+        ).unwrap();
+
+        let outer_texture = texture::Texture::from_bytes(
+            &device,
+            &queue,
+            include_bytes!("images/earth.png"),
+            "earth.png",
+        ).unwrap();
+
+        let inner_planet = CBody::new(
+            1,
+            100.0,
+            6.0,
+            cgmath::Vector3::new(60.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, -1.2),
+            inner_texture,
+            &device,
+        );
+
+        let outer_planet = CBody::new(
+            1,
+            100.0,
+            6.0,
+            cgmath::Vector3::new(160.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, -0.7),
+            outer_texture,
+            &device,
+        );
+
+
 
         /*let c_body_earth = CBody::new(
             0,
@@ -161,7 +196,8 @@ impl State {
         );*/
 
         bodies.push(sun);
-        //bodies.push(c_body_moon);
+        bodies.push(inner_planet);
+        bodies.push(outer_planet);
 
         Self {
             surface,
@@ -173,7 +209,6 @@ impl State {
             render_pipeline,
             c_body_pipeline,
             depth_texture,
-            sun_texture,
             uniform_buffer,
             camera,
             camera_controller,
@@ -276,10 +311,10 @@ impl State {
 
             // Render bodies
             render_pass.set_pipeline(&self.c_body_pipeline);
-            render_pass.set_bind_group(0, &self.sun_texture.bind_group.as_ref().unwrap(), &[]);
             render_pass.set_bind_group(1, &self.uniform_buffer.bind_group, &[]);
 
             for body in self.bodies.iter() {
+                render_pass.set_bind_group(0, &body.texture.bind_group.as_ref().unwrap(), &[]);
                 render_pass.set_bind_group(2, &body.uniform_buffer.bind_group, &[]);
                 render_pass.draw_mesh(&body.mesh);
             }

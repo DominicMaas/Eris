@@ -13,8 +13,8 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 /// The speed of this simulation, by default it is realtime, which does not help at all
 pub const SIM_SPEED: f32 = 1.0;
 
-//pub const G: f32 = 6.67e-11f32 * SIM_SCALE;
-pub const G: f32 = 0.05;
+//pub const G: f32 = 6.67e-11f32;
+pub const G: f32 = 0.0005;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]

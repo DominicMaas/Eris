@@ -3,6 +3,7 @@ use crate::uniform_buffer::{ModelUniform, UniformBuffer};
 use crate::utils::{Vertex, G, SIM_SPEED};
 use cgmath::num_traits::FloatConst;
 use cgmath::{Quaternion, Vector3};
+use crate::texture::Texture;
 
 pub struct CBody {
     pub id: i32,
@@ -13,6 +14,7 @@ pub struct CBody {
     pub rotation: Quaternion<f32>,
     pub mesh: Mesh,
     pub uniform_buffer: UniformBuffer<ModelUniform>,
+    pub texture: Texture
 }
 
 impl CBody {
@@ -22,6 +24,7 @@ impl CBody {
         radius: f32,
         position: Vector3<f32>,
         velocity: Vector3<f32>,
+        texture: Texture,
         device: &wgpu::Device,
     ) -> Self {
         // Create the mesh for this body
@@ -45,11 +48,20 @@ impl CBody {
             rotation,
             mesh,
             uniform_buffer,
+            texture
         }
     }
 
-    pub fn standard_gravitational_parameter(&mut self) -> f32 {
+    pub fn standard_gravitational_parameter(&self) -> f32 {
         G * self.mass
+    }
+
+    pub fn escape_velocity(&self) -> f32 {
+        let n = 2.0 * self.standard_gravitational_parameter();
+        let d = self.radius;
+        let nd = n/d;
+
+        nd.sqrt()
     }
 
     pub fn update(&mut self) {
