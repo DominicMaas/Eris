@@ -25,6 +25,8 @@ pub struct State {
     camera_controller: CameraController,
     bodies: Vec<CBody>,
     gui_context: imgui::Context,
+    gui_platform: imgui_winit_support::WinitPlatform,
+    gui_renderer: imgui_wgpu::Renderer,
 }
 
 impl State {
@@ -207,8 +209,8 @@ impl State {
         // Setup ImGUI and attach it to our window, ImGui is used as the GUI for this
         // application
         let mut gui_context = imgui::Context::create();
-        let mut platform = imgui_winit_support::WinitPlatform::init(&mut gui_context);
-        platform.attach_window(
+        let mut gui_platform = imgui_winit_support::WinitPlatform::init(&mut gui_context);
+        gui_platform.attach_window(
             gui_context.io_mut(),
             &window,
             imgui_winit_support::HiDpiMode::Default,
@@ -251,6 +253,8 @@ impl State {
             camera_controller,
             bodies,
             gui_context,
+            gui_platform,
+            gui_renderer,
         }
     }
 
@@ -315,19 +319,40 @@ impl State {
         );
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
+    pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SwapChainError> {
+        // Build the UI
+        self.gui_platform
+            .prepare_frame(self.gui_context.io_mut(), &window)
+            .expect("Failed to prepare frame!");
+
+        let ui = self.gui_context.frame();
+        {
+            let window = imgui::Window::new(imgui::im_str!("Hello Imgui from WGPU!"));
+            window
+                .size([300.0, 100.0], imgui::Condition::FirstUseEver)
+                .build(&ui, || {
+                    ui.text(imgui::im_str!("Hello world!"));
+                    ui.text(imgui::im_str!(
+                        "This is a demo of imgui-rs using imgui-wgpu!"
+                    ));
+                    ui.separator();
+                    let mouse_pos = ui.io().mouse_pos;
+                    ui.text(imgui::im_str!(
+                        "Mouse Position: ({:.1}, {:.1})",
+                        mouse_pos[0],
+                        mouse_pos[1],
+                    ));
+                });
+        }
+
         // Get a frame
         let frame = self.swap_chain.get_current_frame()?.output;
+        let mut encoder = self.device.create_command_encoder(&Default::default());
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
-
+        // ---- Main ---- //
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
+                label: Some("Main Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
@@ -351,9 +376,6 @@ impl State {
                 }),
             });
 
-            // ---- UI ---- //
-
-
             // Render bodies
             render_pass.set_pipeline(&self.c_body_pipeline);
             render_pass.set_bind_group(1, &self.uniform_buffer.bind_group, &[]);
@@ -365,7 +387,29 @@ impl State {
             }
         }
 
-        // submit will accept anything that implements IntoIter
+        // ---- UI ---- //
+        {
+            let mut ui_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("UI Render Pass"),
+                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                    attachment: &frame.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+
+            // Render the UI
+            self.gui_platform.prepare_render(&ui, &window);
+            self.gui_renderer
+                .render(ui.render(), &self.queue, &self.device, &mut ui_pass)
+                .expect("Failed to render UI!");
+        }
+
+        // Submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
 
         Ok(())

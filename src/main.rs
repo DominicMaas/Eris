@@ -27,38 +27,52 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    //let renderer_config = RendererConfig {
-    //    texture_format: display.sc_desc.format,
-    //    ..Default::default()
-    //};
-    //let renderer = Renderer::new(&mut imgui, &display.device, &display.queue, renderer_config);
-
     let mut state = block_on(state::State::new(&window));
     let mut last_update = Instant::now();
+    let mut is_resumed = true;
+    let mut is_focused = true;
+    let mut is_redraw_requested = true;
 
     event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::RedrawRequested(_) => {
-                let now = Instant::now();
-                let dt = now - last_update;
-                last_update = now;
+        *control_flow = if is_resumed && is_focused {
+            ControlFlow::Poll
+        } else {
+            ControlFlow::Wait
+        };
 
-                state.update(dt);
-                match state.render() {
-                    Ok(_) => {}
-                    // Recreate the swap_chain if lost
-                    Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
-                    // The system is out of memory, we should probably quit
-                    Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                    // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => eprintln!("{:?}", e),
+        match event {
+            Event::Resumed => is_resumed = true,
+            Event::Suspended => is_resumed = false,
+            Event::RedrawRequested(wid) => {
+                if wid == window.id() {
+                    let now = Instant::now();
+                    let dt = now - last_update;
+                    last_update = now;
+
+                    state.update(dt);
+
+                    match state.render(&window) {
+                        Ok(_) => {}
+                        // Recreate the swap_chain if lost
+                        Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
+                        // The system is out of memory, we should probably quit
+                        Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                        // All other errors (Outdated, Timeout) should be resolved by the next frame
+                        Err(e) => eprintln!("{:?}", e),
+                    }
+
+                    is_redraw_requested = false;
                 }
             }
 
             Event::MainEventsCleared => {
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                window.request_redraw();
+                if is_focused && is_resumed && !is_redraw_requested {
+                    window.request_redraw();
+                    is_redraw_requested = true;
+                } else {
+                    // Freeze time while the demo is not in the foreground
+                    last_update = Instant::now();
+                }
             }
 
             Event::WindowEvent {
@@ -69,6 +83,7 @@ fn main() {
                     // UPDATED!
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                        WindowEvent::Focused(f) => is_focused = *f,
 
                         WindowEvent::KeyboardInput { input, .. } => match input {
                             KeyboardInput {
