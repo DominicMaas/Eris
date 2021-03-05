@@ -299,7 +299,7 @@ impl State {
             for body2 in before.iter().chain(after.iter()) {
                 let sqr_distance: f32 = (body2.position - body.position).magnitude2();
                 let force_direction: Vector3<f32> = (body2.position - body.position).normalize();
-                let force: Vector3<f32> = force_direction * G * body.mass * body2.mass / sqr_distance;
+                let force: Vector3<f32> = force_direction * body.standard_gravitational_parameter() * body2.mass / sqr_distance;
                 let acceleration: Vector3<f32> = force / body.mass;
 
                 body.velocity += acceleration;

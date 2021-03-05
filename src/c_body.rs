@@ -1,6 +1,6 @@
 use crate::mesh::Mesh;
 use crate::uniform_buffer::{ModelUniform, UniformBuffer};
-use crate::utils::{Vertex, SIM_SPEED};
+use crate::utils::{Vertex, SIM_SPEED, G};
 use cgmath::num_traits::FloatConst;
 use cgmath::{InnerSpace, Quaternion, Rad, Rotation3, Vector3};
 use std::time::Duration;
@@ -47,6 +47,10 @@ impl CBody {
             mesh,
             uniform_buffer,
         }
+    }
+
+    pub fn standard_gravitational_parameter(&mut self) -> f32 {
+        G * self.mass
     }
 
     pub fn update(&mut self) {
