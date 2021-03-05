@@ -8,12 +8,13 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 
 /// The scale of this simulation, stuff will get messy if we scale realtime
 /// This gets applied to all real life calculations
-pub const SIM_SCALE: f32 = 0.0001;
+// pub const SIM_SCALE: f32 = 0.0001;
 
 /// The speed of this simulation, by default it is realtime, which does not help at all
-pub const SIM_SPEED: f32 = 8.0;
+pub const SIM_SPEED: f32 = 1.0;
 
-pub const G: f32 = 6.67e-11f32 * SIM_SCALE;
+//pub const G: f32 = 6.67e-11f32 * SIM_SCALE;
+pub const G: f32 = 0.05;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]

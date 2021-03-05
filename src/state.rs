@@ -3,12 +3,10 @@ use winit::{event::*, window::Window};
 use crate::c_body::CBody;
 use crate::camera::Camera;
 use crate::camera_controller::CameraController;
-use crate::mesh::{DrawMesh, Mesh};
-use crate::uniform_buffer::UniformBuffer;
-use crate::utils::{Vertex, G, SIM_SCALE, SIM_SPEED};
+use crate::mesh::DrawMesh;
+use crate::texture::Texture;
 use crate::{render_pipeline, texture, uniform_buffer};
-use cgmath::num_traits::Pow;
-use cgmath::{EuclideanSpace, InnerSpace, MetricSpace, Point3, Vector3};
+use cgmath::{InnerSpace, Vector3};
 use std::time::Duration;
 
 pub struct State {
@@ -21,10 +19,8 @@ pub struct State {
     pub render_pipeline: wgpu::RenderPipeline,
     c_body_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
+    sun_texture: texture::Texture,
     uniform_buffer: uniform_buffer::UniformBuffer<uniform_buffer::CameraUniform>,
-    mesh_uniform_buffer: uniform_buffer::UniformBuffer<uniform_buffer::ModelUniform>,
-    mesh: Mesh,
-    diffuse_bind_group: wgpu::BindGroup,
     camera: Camera,
     camera_controller: CameraController,
     bodies: Vec<CBody>,
@@ -68,34 +64,11 @@ impl State {
 
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::SampledTexture {
-                            multisampled: false,
-                            dimension: wgpu::TextureViewDimension::D2,
-                            component_type: wgpu::TextureComponentType::Uint,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler { comparison: false },
-                        count: None,
-                    },
-                ],
-                label: Some("texture_bind_group_layout"),
-            });
-
         // The main camera
         let camera = Camera {
             // position the camera one unit up and 2 units back
             // +z is out of the screen
-            eye: (0.0, 50000.0, 1.0).into(),
+            eye: (0.0, 50.0, 50.0).into(),
             // have it look at the origin
             target: (0.0, 0.0, 0.0).into(),
             // which way is "up"
@@ -119,7 +92,7 @@ impl State {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    &texture_bind_group_layout,
+                    &Texture::create_bind_group_layout(&device),
                     &uniform_buffer::UniformBufferUtils::create_bind_group_layout(&device),
                     &uniform_buffer::UniformBufferUtils::create_bind_group_layout(&device),
                 ],
@@ -146,88 +119,30 @@ impl State {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
-        // The mesh
-        let mut vertices: Vec<Vertex> = Vec::new();
-        let mut indices: Vec<u16> = Vec::new();
-
-        //vertices.push(Vertex::with_color(cgmath::Vector3::new(-0.0868241, 0.49240386, 0.0), cgmath::Vector3::new(0.5, 0.0, 0.5)));
-        //vertices.push(Vertex::with_color(cgmath::Vector3::new(-0.49513406, 0.06958647, 0.0), cgmath::Vector3::new(0.5, 0.0, 0.5)));
-        //vertices.push(Vertex::with_color(cgmath::Vector3::new(-0.21918549, -0.44939706, 0.0), cgmath::Vector3::new(0.5, 0.0, 0.5)));
-        //vertices.push(Vertex::with_color(cgmath::Vector3::new(0.35966998, -0.3473291, 0.0), cgmath::Vector3::new(0.5, 0.0, 0.5)));
-        //vertices.push(Vertex::with_color(cgmath::Vector3::new(0.44147372, 0.2347359, 0.0), cgmath::Vector3::new(0.5, 0.0, 0.5)));
-
-        vertices.push(Vertex::with_tex_coords(
-            cgmath::Vector3::new(-0.0868241, 0.49240386, 0.0),
-            cgmath::Vector3::new(1.0, 1.0, 1.0),
-            cgmath::Vector2::new(0.4131759, 0.99240386),
-        ));
-        vertices.push(Vertex::with_tex_coords(
-            cgmath::Vector3::new(-0.49513406, 0.06958647, 0.0),
-            cgmath::Vector3::new(1.0, 1.0, 1.0),
-            cgmath::Vector2::new(0.0048659444, 0.56958646),
-        ));
-        vertices.push(Vertex::with_tex_coords(
-            cgmath::Vector3::new(-0.21918549, -0.44939706, 0.0),
-            cgmath::Vector3::new(1.0, 1.0, 1.0),
-            cgmath::Vector2::new(0.28081453, 0.050602943),
-        ));
-        vertices.push(Vertex::with_tex_coords(
-            cgmath::Vector3::new(0.35966998, -0.3473291, 0.0),
-            cgmath::Vector3::new(1.0, 1.0, 1.0),
-            cgmath::Vector2::new(0.85967, 0.15267089),
-        ));
-        vertices.push(Vertex::with_tex_coords(
-            cgmath::Vector3::new(0.44147372, 0.2347359, 0.0),
-            cgmath::Vector3::new(1.0, 1.0, 1.0),
-            cgmath::Vector2::new(0.9414737, 0.7347359),
-        ));
-
-        indices.push(0);
-        indices.push(1);
-        indices.push(4);
-
-        indices.push(1);
-        indices.push(2);
-        indices.push(4);
-
-        indices.push(2);
-        indices.push(3);
-        indices.push(4);
-
-        let mesh = Mesh::new(vertices, indices, &device);
-        let mesh_uniform_buffer = uniform_buffer::UniformBuffer::new(
-            uniform_buffer::ModelUniform {
-                model: cgmath::Matrix4::from_translation(cgmath::Vector3::new(0.0, 0.0, 0.0)),
-            },
+        let sun_texture = texture::Texture::from_bytes(
             &device,
-        );
-
-        // The texture (temp)
-        let diffuse_bytes = include_bytes!("images/happy-tree.png"); // CHANGED!
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap(); // CHANGED!
+            &queue,
+            include_bytes!("images/happy-tree.png"),
+            "happy-tree.png",
+        )
+        .unwrap(); // CHANGED!
 
         // ----- BIND GROUPS ----- //
-        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view), // CHANGED!
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler), // CHANGED!
-                },
-            ],
-            label: Some("diffuse_bind_group"),
-        });
 
-        let camera_controller = CameraController::new(60.0);
+        let camera_controller = CameraController::new(10.0);
 
         let mut bodies = Vec::new();
 
-        let c_body_earth = CBody::new(
+        let sun = CBody::new(
+            0,
+            100_000.0,
+            20.0,
+            cgmath::Vector3::new(0.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, 0.0),
+            &device,
+        );
+
+        /*let c_body_earth = CBody::new(
             0,
             5.972e24 * SIM_SCALE,
             6.371e6 * SIM_SCALE,
@@ -243,10 +158,10 @@ impl State {
             cgmath::Vector3::new(384.4e6 * SIM_SCALE, 0.0, 0.0),
             cgmath::Vector3::new(0.0, 0.0, -4022.0 * SIM_SCALE * SIM_SPEED),
             &device,
-        );
+        );*/
 
-        bodies.push(c_body_earth);
-        bodies.push(c_body_moon);
+        bodies.push(sun);
+        //bodies.push(c_body_moon);
 
         Self {
             surface,
@@ -258,10 +173,8 @@ impl State {
             render_pipeline,
             c_body_pipeline,
             depth_texture,
+            sun_texture,
             uniform_buffer,
-            mesh,
-            mesh_uniform_buffer,
-            diffuse_bind_group,
             camera,
             camera_controller,
             bodies,
@@ -303,11 +216,10 @@ impl State {
                         / sqr_distance;
                 let acceleration: Vector3<f32> = force / body.mass;
 
-                body.velocity += acceleration;
+                body.velocity += acceleration * dt.as_secs_f32();
             }
 
             // Run simulations
-            //print!("Body {} V(x,y,z): V({},{},{})\n", body.id, body.velocity.x, body.velocity.y, body.velocity.z);
             body.update();
 
             self.queue.write_buffer(
@@ -317,9 +229,7 @@ impl State {
             );
         }
 
-        // Look towards main mass
-        //self.camera.target = Point3::from_vec(self.bodies[0].position);
-
+        // Update camera positions
         self.camera_controller.update_camera(&mut self.camera);
         self.uniform_buffer.data.view_proj = self.camera.build_view_projection_matrix();
         self.queue.write_buffer(
@@ -364,16 +274,9 @@ impl State {
                 }),
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.uniform_buffer.bind_group, &[]);
-            render_pass.set_bind_group(2, &self.mesh_uniform_buffer.bind_group, &[]);
-
-            render_pass.draw_mesh(&self.mesh);
-
             // Render bodies
             render_pass.set_pipeline(&self.c_body_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.sun_texture.bind_group.as_ref().unwrap(), &[]);
             render_pass.set_bind_group(1, &self.uniform_buffer.bind_group, &[]);
 
             for body in self.bodies.iter() {
