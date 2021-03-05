@@ -43,6 +43,8 @@
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/winit-d7580f413ee25bc1/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/anyhow-9e9a208d119f6761/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/eris-dfbae3e48cabc2b4/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/imgui-sys-8a1bd29509a7df21/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/spirv_cross-a5ec6bbd55691309/out" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

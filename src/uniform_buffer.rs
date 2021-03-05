@@ -42,7 +42,7 @@ impl<T: Copy + bytemuck::Pod + bytemuck::Zeroable> UniformBuffer<T> {
             layout: &UniformBufferUtils::create_bind_group_layout(&device),
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer(buffer.slice(..)),
+                resource: buffer.as_entire_binding(),
             }],
             label: Some("uniform_bind_group"),
         });
@@ -62,8 +62,9 @@ impl UniformBufferUtils {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::UniformBuffer {
-                    dynamic: false,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
                     min_binding_size: None,
                 },
                 count: None,

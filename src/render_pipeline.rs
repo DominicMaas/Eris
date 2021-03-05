@@ -4,8 +4,8 @@ use anyhow::*;
 
 pub struct RenderPipelineBuilder<'a> {
     layout: Option<&'a wgpu::PipelineLayout>,
-    vertex_shader_source: Option<wgpu::ShaderModuleSource<'a>>,
-    fragment_shader_source: Option<wgpu::ShaderModuleSource<'a>>,
+    vertex_shader_source: Option<wgpu::ShaderModuleDescriptor<'a>>,
+    fragment_shader_source: Option<wgpu::ShaderModuleDescriptor<'a>>,
     texture_format: wgpu::TextureFormat,
     pipeline_name: &'a str,
     primitive_topology: wgpu::PrimitiveTopology,
@@ -30,14 +30,17 @@ impl<'a> RenderPipelineBuilder<'a> {
         self
     }
 
-    pub fn with_vertex_shader(&mut self, vertex_shader: wgpu::ShaderModuleSource<'a>) -> &mut Self {
+    pub fn with_vertex_shader(
+        &mut self,
+        vertex_shader: wgpu::ShaderModuleDescriptor<'a>,
+    ) -> &mut Self {
         self.vertex_shader_source = Some(vertex_shader);
         self
     }
 
     pub fn with_fragment_shader(
         &mut self,
-        fragment_shader: wgpu::ShaderModuleSource<'a>,
+        fragment_shader: wgpu::ShaderModuleDescriptor<'a>,
     ) -> &mut Self {
         self.fragment_shader_source = Some(fragment_shader);
         self
@@ -67,12 +70,14 @@ impl<'a> RenderPipelineBuilder<'a> {
 
         // Create the modules
         let vs_module = device.create_shader_module(
-            self.vertex_shader_source
+            &self
+                .vertex_shader_source
                 .take()
                 .context("Please include a vertex shader")?,
         );
         let fs_module = device.create_shader_module(
-            self.fragment_shader_source
+            &self
+                .fragment_shader_source
                 .take()
                 .context("Please include a fragment shader")?,
         );
@@ -81,14 +86,46 @@ impl<'a> RenderPipelineBuilder<'a> {
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some(self.pipeline_name),
             layout: Some(&layout),
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
+            vertex: wgpu::VertexState {
                 module: &vs_module,
                 entry_point: "main",
+                buffers: &[Vertex::desc()],
             },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+            primitive: wgpu::PrimitiveState {
+                topology: self.primitive_topology,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: wgpu::CullMode::Back,
+                polygon_mode: wgpu::PolygonMode::Fill,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+                // Setting this to true requires Features::DEPTH_CLAMPING
+                clamp_depth: false,
+            }),
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            fragment: Some(wgpu::FragmentState {
                 module: &fs_module,
                 entry_point: "main",
+                targets: &[wgpu::ColorTargetState {
+                    format: self.texture_format,
+                    alpha_blend: wgpu::BlendState::REPLACE,
+                    color_blend: wgpu::BlendState::REPLACE,
+                    write_mask: wgpu::ColorWrite::ALL,
+                }],
             }),
+        });
+
+        /* let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: wgpu::CullMode::Back,
@@ -97,27 +134,9 @@ impl<'a> RenderPipelineBuilder<'a> {
                 depth_bias_clamp: 0.0,
                 clamp_depth: false,
             }),
-            primitive_topology: self.primitive_topology,
-            color_states: &[wgpu::ColorStateDescriptor {
-                format: self.texture_format,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                write_mask: wgpu::ColorWrite::ALL,
-            }],
-            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: texture::Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilStateDescriptor::default(),
-            }),
-            vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[Vertex::desc()],
-            },
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
-        });
+
+
+        });*/
 
         Ok(pipeline)
     }

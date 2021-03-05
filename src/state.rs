@@ -7,6 +7,7 @@ use crate::mesh::DrawMesh;
 use crate::texture::Texture;
 use crate::{render_pipeline, texture, uniform_buffer};
 use cgmath::{InnerSpace, Vector3};
+use imgui::FontSource;
 use std::time::Duration;
 
 pub struct State {
@@ -23,6 +24,7 @@ pub struct State {
     camera: Camera,
     camera_controller: CameraController,
     bodies: Vec<CBody>,
+    gui_context: imgui::Context,
 }
 
 impl State {
@@ -35,7 +37,7 @@ impl State {
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
+                power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
             })
             .await
@@ -44,9 +46,9 @@ impl State {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
+                    label: None,
                     features: wgpu::Features::empty(),
                     limits: wgpu::Limits::default(),
-                    shader_validation: true,
                 },
                 None, // Trace path
             )
@@ -54,8 +56,8 @@ impl State {
             .unwrap();
 
         let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+            format: adapter.get_swap_chain_preferred_format(&surface),
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
@@ -127,7 +129,8 @@ impl State {
             &queue,
             include_bytes!("images/sun.png"),
             "sun.png",
-        ).unwrap();
+        )
+        .unwrap();
 
         let sun = CBody::new(
             0,
@@ -146,14 +149,16 @@ impl State {
             &queue,
             include_bytes!("images/earth.png"),
             "earth.png",
-        ).unwrap();
+        )
+        .unwrap();
 
         let outer_texture = texture::Texture::from_bytes(
             &device,
             &queue,
             include_bytes!("images/earth.png"),
             "earth.png",
-        ).unwrap();
+        )
+        .unwrap();
 
         let inner_planet = CBody::new(
             1,
@@ -174,8 +179,6 @@ impl State {
             outer_texture,
             &device,
         );
-
-
 
         /*let c_body_earth = CBody::new(
             0,
@@ -199,6 +202,40 @@ impl State {
         bodies.push(inner_planet);
         bodies.push(outer_planet);
 
+        // -------------- GUI ------------------ //
+
+        // Setup ImGUI and attach it to our window, ImGui is used as the GUI for this
+        // application
+        let mut gui_context = imgui::Context::create();
+        let mut platform = imgui_winit_support::WinitPlatform::init(&mut gui_context);
+        platform.attach_window(
+            gui_context.io_mut(),
+            &window,
+            imgui_winit_support::HiDpiMode::Default,
+        );
+        gui_context.set_ini_filename(None);
+
+        // Setup the font for ImGui
+        let hidpi_factor = window.scale_factor();
+        let font_size = (13.0 * hidpi_factor) as f32;
+        gui_context.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+        gui_context.fonts().add_font(&[FontSource::DefaultFontData {
+            config: Some(imgui::FontConfig {
+                oversample_h: 1,
+                pixel_snap_h: true,
+                size_pixels: font_size,
+                ..Default::default()
+            }),
+        }]);
+
+        let renderer_config = imgui_wgpu::RendererConfig {
+            texture_format: sc_desc.format,
+            ..Default::default()
+        };
+
+        let gui_renderer =
+            imgui_wgpu::Renderer::new(&mut gui_context, &device, &queue, renderer_config);
+
         Self {
             surface,
             device,
@@ -213,6 +250,7 @@ impl State {
             camera,
             camera_controller,
             bodies,
+            gui_context,
         }
     }
 
@@ -235,6 +273,9 @@ impl State {
     }
 
     pub fn update(&mut self, dt: Duration) {
+        // UI input
+        self.gui_context.io_mut().update_delta_time(dt);
+
         // Loop through all bodies and apply updates
         for i in 0..self.bodies.len() {
             let (before, nonbefore) = self.bodies.split_at_mut(i);
@@ -286,6 +327,7 @@ impl State {
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
@@ -308,6 +350,9 @@ impl State {
                     stencil_ops: None,
                 }),
             });
+
+            // ---- UI ---- //
+
 
             // Render bodies
             render_pass.set_pipeline(&self.c_body_pipeline);

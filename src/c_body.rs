@@ -1,9 +1,9 @@
 use crate::mesh::Mesh;
+use crate::texture::Texture;
 use crate::uniform_buffer::{ModelUniform, UniformBuffer};
 use crate::utils::{Vertex, G, SIM_SPEED};
 use cgmath::num_traits::FloatConst;
 use cgmath::{Quaternion, Vector3};
-use crate::texture::Texture;
 
 pub struct CBody {
     pub id: i32,
@@ -14,7 +14,7 @@ pub struct CBody {
     pub rotation: Quaternion<f32>,
     pub mesh: Mesh,
     pub uniform_buffer: UniformBuffer<ModelUniform>,
-    pub texture: Texture
+    pub texture: Texture,
 }
 
 impl CBody {
@@ -48,7 +48,7 @@ impl CBody {
             rotation,
             mesh,
             uniform_buffer,
-            texture
+            texture,
         }
     }
 
@@ -59,7 +59,7 @@ impl CBody {
     pub fn escape_velocity(&self) -> f32 {
         let n = 2.0 * self.standard_gravitational_parameter();
         let d = self.radius;
-        let nd = n/d;
+        let nd = n / d;
 
         nd.sqrt()
     }
