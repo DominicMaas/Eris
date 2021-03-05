@@ -1,6 +1,5 @@
 mod c_body;
 mod camera;
-mod camera_controller;
 mod mesh;
 mod render_pipeline;
 mod state;
@@ -75,12 +74,18 @@ fn main() {
                 }
             }
 
+            Event::DeviceEvent {
+                ref event,
+                .. // We're not using device_id currently
+            } => {
+                state.device_input(event);
+            }
+
             Event::WindowEvent {
                 ref event,
                 window_id,
             } if window_id == window.id() => {
                 if !state.input(event) {
-                    // UPDATED!
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         WindowEvent::Focused(f) => is_focused = *f,

@@ -1,11 +1,10 @@
 use winit::{event::*, window::Window};
 
 use crate::c_body::CBody;
-use crate::camera::Camera;
-use crate::camera_controller::CameraController;
 use crate::mesh::DrawMesh;
 use crate::texture::Texture;
-use crate::{render_pipeline, texture, uniform_buffer};
+use crate::{camera, render_pipeline, texture, uniform_buffer};
+use cgmath::num_traits::FloatConst;
 use cgmath::{InnerSpace, Vector3};
 use imgui::FontSource;
 use std::time::Duration;
@@ -21,12 +20,14 @@ pub struct State {
     c_body_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
     uniform_buffer: uniform_buffer::UniformBuffer<uniform_buffer::CameraUniform>,
-    camera: Camera,
-    camera_controller: CameraController,
+    camera: camera::Camera,
+    camera_controller: camera::CameraController,
+    camera_projection: camera::Projection,
     bodies: Vec<CBody>,
     gui_context: imgui::Context,
     gui_platform: imgui_winit_support::WinitPlatform,
     gui_renderer: imgui_wgpu::Renderer,
+    mouse_pressed: bool,
 }
 
 impl State {
@@ -68,24 +69,28 @@ impl State {
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
         // The main camera
-        let camera = Camera {
-            // position the camera one unit up and 2 units back
-            // +z is out of the screen
-            eye: (0.0, 150.0, 150.0).into(),
-            // have it look at the origin
-            target: (0.0, 0.0, 0.0).into(),
-            // which way is "up"
-            up: cgmath::Vector3::unit_y(),
-            aspect: sc_desc.width as f32 / sc_desc.height as f32,
-            fovy: 70.0,
-            znear: 0.1,
-            zfar: 1000000.0,
+        let camera_projection = camera::Projection::new(
+            sc_desc.width,
+            sc_desc.height,
+            cgmath::Rad(70.0 / 180.0 * f32::PI()),
+            0.01,
+            1000.0,
+        );
+        let camera_controller = camera::CameraController::new(20.0, 0.1);
+        let camera = camera::Camera {
+            position: (0.0, 0.0, 0.0).into(), // Position of camera
+            front: (0.0, 0.0, 0.0).into(), // Where the camera is looking (takes into account rotation)
+            up: (0.0, 0.0, 0.0).into(),
+            world_up: (0.0, 1.0, 0.0).into(),
+            right: (0.0, 0.0, 0.0).into(),
+            yaw: cgmath::Rad(-90.0 / 180.0 * f32::PI()), // Look left or right
+            pitch: cgmath::Rad(0.0),                     // Look Up / Down
         };
 
         // The uniform buffer
         let uniform_buffer = uniform_buffer::UniformBuffer::new(
             uniform_buffer::CameraUniform {
-                view_proj: camera.build_view_projection_matrix(),
+                view_proj: camera_projection.calc_matrix() * camera.calc_matrix(),
             },
             &device,
         );
@@ -121,8 +126,6 @@ impl State {
 
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
-
-        let camera_controller = CameraController::new(10.0);
 
         let mut bodies = Vec::new();
 
@@ -182,27 +185,9 @@ impl State {
             &device,
         );
 
-        /*let c_body_earth = CBody::new(
-            0,
-            5.972e24 * SIM_SCALE,
-            6.371e6 * SIM_SCALE,
-            cgmath::Vector3::new(0.0, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, 0.0),
-            &device,
-        );
-
-        let c_body_moon = CBody::new(
-            1,
-            7.342e22 * SIM_SCALE,
-            1.7371e6 * SIM_SCALE,
-            cgmath::Vector3::new(384.4e6 * SIM_SCALE, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, -4022.0 * SIM_SCALE * SIM_SPEED),
-            &device,
-        );*/
-
         bodies.push(sun);
         bodies.push(inner_planet);
-        bodies.push(outer_planet);
+        //bodies.push(outer_planet);
 
         // -------------- GUI ------------------ //
 
@@ -251,10 +236,12 @@ impl State {
             uniform_buffer,
             camera,
             camera_controller,
+            camera_projection,
             bodies,
             gui_context,
             gui_platform,
             gui_renderer,
+            mouse_pressed: false,
         }
     }
 
@@ -268,12 +255,37 @@ impl State {
         self.depth_texture =
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
 
-        // The camera sizing needs to be updated
-        self.camera.aspect = self.sc_desc.width as f32 / self.sc_desc.height as f32;
+        // The screen projection needs to be updated
+        self.camera_projection
+            .resize(self.sc_desc.width, self.sc_desc.height);
+    }
+
+    pub fn device_input(&mut self, event: &DeviceEvent) -> bool {
+        match event {
+            DeviceEvent::Button {
+                button: 1, // Left Mouse Button
+                state,
+            } => {
+                self.mouse_pressed = *state == ElementState::Pressed;
+                true
+            }
+            DeviceEvent::MouseMotion { delta } => {
+                //if self.mouse_pressed {
+                    self.camera_controller.process_mouse(delta.0, delta.1);
+                //}
+                true
+            }
+            _ => false,
+        }
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
-        self.camera_controller.process_events(event)
+        //let io = self.gui_context.io_mut();
+        //let ui_handle = self.gui_platform.handle_event(io, &window, event);
+
+        // self.camera_controller.process_events(event)
+
+        self.camera_controller.process_keyboard(event)
     }
 
     pub fn update(&mut self, dt: Duration) {
@@ -310,8 +322,9 @@ impl State {
         }
 
         // Update camera positions
-        self.camera_controller.update_camera(&mut self.camera);
-        self.uniform_buffer.data.view_proj = self.camera.build_view_projection_matrix();
+        self.camera_controller.update_camera(&mut self.camera, dt);
+        self.uniform_buffer.data.view_proj =
+            self.camera_projection.calc_matrix() * self.camera.calc_matrix();
         self.queue.write_buffer(
             &self.uniform_buffer.buffer,
             0,
@@ -327,21 +340,11 @@ impl State {
 
         let ui = self.gui_context.frame();
         {
-            let window = imgui::Window::new(imgui::im_str!("Hello Imgui from WGPU!"));
+            let window = imgui::Window::new(imgui::im_str!("Debug"));
             window
                 .size([300.0, 100.0], imgui::Condition::FirstUseEver)
                 .build(&ui, || {
                     ui.text(imgui::im_str!("Hello world!"));
-                    ui.text(imgui::im_str!(
-                        "This is a demo of imgui-rs using imgui-wgpu!"
-                    ));
-                    ui.separator();
-                    let mouse_pos = ui.io().mouse_pos;
-                    ui.text(imgui::im_str!(
-                        "Mouse Position: ({:.1}, {:.1})",
-                        mouse_pos[0],
-                        mouse_pos[1],
-                    ));
                 });
         }
 
