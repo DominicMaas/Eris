@@ -6,6 +6,7 @@ use cgmath::{InnerSpace, Quaternion, Rad, Rotation3, Vector3};
 use std::time::Duration;
 
 pub struct CBody {
+    pub id: i32,
     pub mass: f32,
     pub radius: f32,
     pub velocity: Vector3<f32>,
@@ -17,6 +18,7 @@ pub struct CBody {
 
 impl CBody {
     pub fn new(
+        id: i32,
         mass: f32,
         radius: f32,
         position: Vector3<f32>,
@@ -36,6 +38,7 @@ impl CBody {
         let uniform_buffer = UniformBuffer::new(uniform_data, device);
 
         Self {
+            id,
             mass,
             radius,
             velocity,
@@ -46,7 +49,7 @@ impl CBody {
         }
     }
 
-    pub fn update(&mut self, _dt: Duration) {
+    pub fn update(&mut self) {
         //let rotation_speed_deg: f32 = 0.01;
         //let rotation_speed: f32 = rotation_speed_deg * f32::PI() / 180.0;
 
@@ -62,7 +65,8 @@ impl CBody {
         //let new_pos:  Vector3<f32> = Vector3::new(0.0, 0.01, 0.0);
         //self.position = self.position + new_pos;
 
-        self.position = self.position + (self.velocity * _dt.as_secs_f32() * SIM_SPEED);
+        self.position = self.position + (self.velocity * SIM_SPEED);
+        //self.position = self.position + (self.velocity * _dt.as_secs_f32() * SIM_SPEED);
 
         // Update the uniform buffer
         self.uniform_buffer.data.model =

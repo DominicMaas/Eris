@@ -228,6 +228,7 @@ impl State {
         let mut bodies = Vec::new();
 
         let c_body_earth = CBody::new(
+            0,
             5.972e24 * SIM_SCALE,
             6.371e6 * SIM_SCALE,
             cgmath::Vector3::new(0.0, 0.0, 0.0),
@@ -236,10 +237,11 @@ impl State {
         );
 
         let c_body_moon = CBody::new(
+            1,
             7.342e22 * SIM_SCALE,
             1.7371e6 * SIM_SCALE,
             cgmath::Vector3::new(384.4e6 * SIM_SCALE, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, 1022.0 * SIM_SPEED),
+            cgmath::Vector3::new(0.0, 0.0, -4022.0 * SIM_SCALE * SIM_SPEED),
             &device,
         );
 
@@ -286,27 +288,26 @@ impl State {
     }
 
     pub fn update(&mut self, dt: Duration) {
+        // Loop through all bodies and apply updates
+        for i in 0..self.bodies.len() {
+            let (before, nonbefore) = self.bodies.split_at_mut(i);
+            let (body, after) = nonbefore.split_first_mut().unwrap();
 
-
-        let mut bodies = self.bodies.iter_mut();
-        while let Some(body) = bodies.next() {
             // Calculate net force against other bodies
-            while let Some(body2) = bodies.next() {
-                // Don't apply to current
-                if !std::ptr::eq(body2, body) {
 
+            // This loop iterates over all bodies that are no the current body
+            for body2 in before.iter().chain(after.iter()) {
+                let sqr_distance: f32 = (body2.position - body.position).magnitude2();
+                let force_direction: Vector3<f32> = (body2.position - body.position).normalize();
+                let force: Vector3<f32> = force_direction * G * body.mass * body2.mass / sqr_distance;
+                let acceleration: Vector3<f32> = force / body.mass;
 
-                    let sqr_distance: f32 = (body2.position - body.position).magnitude2();
-                    let force_direction: Vector3<f32> = (body2.position - body.position).normalize();
-                    let force: Vector3<f32> = force_direction * G * body.mass * body2.mass / sqr_distance;
-                    let acceleration: Vector3<f32> = force / body.mass;
-
-                    body.velocity += (acceleration * dt.as_secs_f32() * SIM_SPEED);
-                }
+                body.velocity += acceleration;
             }
 
             // Run simulations
-            body.update(dt);
+            //print!("Body {} V(x,y,z): V({},{},{})\n", body.id, body.velocity.x, body.velocity.y, body.velocity.z);
+            body.update();
 
             self.queue.write_buffer(
                 &body.uniform_buffer.buffer,
