@@ -1,8 +1,9 @@
-use cgmath::{Vector3, Quaternion};
 use crate::mesh::Mesh;
-use crate::utils::Vertex;
+use crate::uniform_buffer::{ModelUniform, UniformBuffer};
+use crate::utils::{Vertex, SIM_SPEED};
 use cgmath::num_traits::FloatConst;
-use crate::uniform_buffer::{UniformBuffer, ModelUniform};
+use cgmath::{InnerSpace, Quaternion, Rad, Rotation3, Vector3};
+use std::time::Duration;
 
 pub struct CBody {
     pub mass: f32,
@@ -15,7 +16,13 @@ pub struct CBody {
 }
 
 impl CBody {
-    pub fn new(mass: f32, radius: f32, position: Vector3<f32>, velocity: Vector3<f32>, device: &wgpu::Device) -> Self {
+    pub fn new(
+        mass: f32,
+        radius: f32,
+        position: Vector3<f32>,
+        velocity: Vector3<f32>,
+        device: &wgpu::Device,
+    ) -> Self {
         // Create the mesh for this body
         let sector_count: u16 = 38;
         let stack_count: u16 = 24;
@@ -23,7 +30,7 @@ impl CBody {
         let rotation: Quaternion<f32> = Quaternion::new(0.0, 0.0, 0.0, 0.0);
 
         let uniform_data = ModelUniform {
-            model: cgmath::Matrix4::from_translation(position) * cgmath::Matrix4::from(rotation)
+            model: cgmath::Matrix4::from_translation(position) * cgmath::Matrix4::from(rotation),
         };
 
         let uniform_buffer = UniformBuffer::new(uniform_data, device);
@@ -35,10 +42,32 @@ impl CBody {
             position,
             rotation,
             mesh,
-            uniform_buffer
+            uniform_buffer,
         }
     }
 
+    pub fn update(&mut self, _dt: Duration) {
+        //let rotation_speed_deg: f32 = 0.01;
+        //let rotation_speed: f32 = rotation_speed_deg * f32::PI() / 180.0;
+
+        //let rot: Quaternion<f32> = Quaternion::from_axis_angle(
+        //    Vector3::new(1.0, 0.0, 0.0).normalize(),
+        //    Rad(rotation_speed),
+        //);
+        //self.rotation = self.rotation * rot;
+
+
+        //let force = self.mass * self.velocity
+
+        //let new_pos:  Vector3<f32> = Vector3::new(0.0, 0.01, 0.0);
+        //self.position = self.position + new_pos;
+
+        self.position = self.position + (self.velocity * _dt.as_secs_f32() * SIM_SPEED);
+
+        // Update the uniform buffer
+        self.uniform_buffer.data.model =
+            cgmath::Matrix4::from_translation(self.position) * cgmath::Matrix4::from(self.rotation);
+    }
 
     fn build_mesh(radius: f32, sector_count: u16, stack_count: u16, device: &wgpu::Device) -> Mesh {
         // Build the vertices for the mesh
@@ -66,19 +95,19 @@ impl CBody {
         let mut sector_angle: f32;
         let mut stack_angle: f32;
 
-        for i in 0..stack_count+1 {
-            stack_angle = f32::PI() / 2.0 - i as f32 * stack_step;  // starting from pi/2 to -pi/2
-            xy = radius * stack_angle.cos();               // r * cos(u)
-            z = radius * stack_angle.sin();                // r * sin(u)
+        for i in 0..stack_count + 1 {
+            stack_angle = f32::PI() / 2.0 - i as f32 * stack_step; // starting from pi/2 to -pi/2
+            xy = radius * stack_angle.cos(); // r * cos(u)
+            z = radius * stack_angle.sin(); // r * sin(u)
 
             // add (sectorCount+1) vertices per stack
             // the first and last vertices have same position and normal, but different tex coords
-            for j in 0..sector_count+1 {
-                sector_angle = j as f32 * sector_step;              // starting from 0 to 2pi
+            for j in 0..sector_count + 1 {
+                sector_angle = j as f32 * sector_step; // starting from 0 to 2pi
 
                 // vertex position (x, y, z)
-                x = xy * sector_angle.cos();             // r * cos(u) * cos(v)
-                y = xy * sector_angle.sin();             // r * cos(u) * sin(v)
+                x = xy * sector_angle.cos(); // r * cos(u) * cos(v)
+                y = xy * sector_angle.sin(); // r * cos(u) * sin(v)
 
                 let position = cgmath::Vector3::new(x, y, z);
 
@@ -93,7 +122,7 @@ impl CBody {
                 s = (j / sector_count) as f32;
                 t = (i / stack_count) as f32;
 
-                let tex_coord = cgmath::Vector2::new(s, t,);
+                let tex_coord = cgmath::Vector2::new(s, t);
 
                 vertices.push(Vertex::with_tex_coords(position, normal, tex_coord));
             }
@@ -103,11 +132,10 @@ impl CBody {
         let mut k2: u16;
 
         for i in 0u16..stack_count {
-            k1 = i * (sector_count + 1);     // beginning of current stack
-            k2 = k1 + sector_count + 1;      // beginning of next stack
+            k1 = i * (sector_count + 1); // beginning of current stack
+            k2 = k1 + sector_count + 1; // beginning of next stack
 
             for _j in 0u16..sector_count {
-
                 // 2 triangles per sector excluding first and last stacks
                 // k1 => k2 => k1+1
                 if i != 0 {

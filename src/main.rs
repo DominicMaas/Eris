@@ -15,6 +15,7 @@ use winit::{
 };
 
 use futures::executor::block_on;
+use std::time::Instant;
 
 fn main() {
     env_logger::init();
@@ -57,11 +58,16 @@ fn main() {
     //let renderer = Renderer::new(&mut imgui, &display.device, &display.queue, renderer_config);
 
     let mut state = block_on(state::State::new(&window));
+    let mut last_update = Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(_) => {
-                state.update();
+                let now = Instant::now();
+                let dt = now - last_update;
+                last_update = now;
+
+                state.update(dt);
                 match state.render() {
                     Ok(_) => {}
                     // Recreate the swap_chain if lost

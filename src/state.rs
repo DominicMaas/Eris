@@ -5,8 +5,11 @@ use crate::camera::Camera;
 use crate::camera_controller::CameraController;
 use crate::mesh::{DrawMesh, Mesh};
 use crate::uniform_buffer::UniformBuffer;
-use crate::utils::Vertex;
+use crate::utils::{Vertex, G, SIM_SCALE, SIM_SPEED};
 use crate::{render_pipeline, texture, uniform_buffer};
+use std::time::Duration;
+use cgmath::{Vector3, MetricSpace, InnerSpace, Point3, EuclideanSpace};
+use cgmath::num_traits::Pow;
 
 pub struct State {
     pub surface: wgpu::Surface,
@@ -92,7 +95,7 @@ impl State {
         let camera = Camera {
             // position the camera one unit up and 2 units back
             // +z is out of the screen
-            eye: (0.0, 1.0, 2.0).into(),
+            eye: (0.0, 50000.0, 1.0).into(),
             // have it look at the origin
             target: (0.0, 0.0, 0.0).into(),
             // which way is "up"
@@ -100,7 +103,7 @@ impl State {
             aspect: sc_desc.width as f32 / sc_desc.height as f32,
             fovy: 70.0,
             znear: 0.1,
-            zfar: 100.0,
+            zfar: 1000000.0,
         };
 
         // The uniform buffer
@@ -220,23 +223,23 @@ impl State {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera_controller = CameraController::new(0.2);
+        let camera_controller = CameraController::new(60.0);
 
         let mut bodies = Vec::new();
 
         let c_body_earth = CBody::new(
-            1.0,
-            4.0,
+            5.972e24 * SIM_SCALE,
+            6.371e6 * SIM_SCALE,
             cgmath::Vector3::new(0.0, 0.0, 0.0),
             cgmath::Vector3::new(0.0, 0.0, 0.0),
             &device,
         );
 
         let c_body_moon = CBody::new(
-            1.0,
-            0.5,
-            cgmath::Vector3::new(8.0, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, 0.0),
+            7.342e22 * SIM_SCALE,
+            1.7371e6 * SIM_SCALE,
+            cgmath::Vector3::new(384.4e6 * SIM_SCALE, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, 1022.0 * SIM_SPEED),
             &device,
         );
 
@@ -273,13 +276,48 @@ impl State {
         // After the swapchain is recreated, we need to rebuild the depth texture
         self.depth_texture =
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
+
+        // The camera sizing needs to be updated
+        self.camera.aspect = self.sc_desc.width as f32 / self.sc_desc.height as f32;
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         self.camera_controller.process_events(event)
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: Duration) {
+
+
+        let mut bodies = self.bodies.iter_mut();
+        while let Some(body) = bodies.next() {
+            // Calculate net force against other bodies
+            while let Some(body2) = bodies.next() {
+                // Don't apply to current
+                if !std::ptr::eq(body2, body) {
+
+
+                    let sqr_distance: f32 = (body2.position - body.position).magnitude2();
+                    let force_direction: Vector3<f32> = (body2.position - body.position).normalize();
+                    let force: Vector3<f32> = force_direction * G * body.mass * body2.mass / sqr_distance;
+                    let acceleration: Vector3<f32> = force / body.mass;
+
+                    body.velocity += (acceleration * dt.as_secs_f32() * SIM_SPEED);
+                }
+            }
+
+            // Run simulations
+            body.update(dt);
+
+            self.queue.write_buffer(
+                &body.uniform_buffer.buffer,
+                0,
+                bytemuck::cast_slice(&[body.uniform_buffer.data]),
+            );
+        }
+
+        // Look towards main mass
+        //self.camera.target = Point3::from_vec(self.bodies[0].position);
+
         self.camera_controller.update_camera(&mut self.camera);
         self.uniform_buffer.data.view_proj = self.camera.build_view_projection_matrix();
         self.queue.write_buffer(
