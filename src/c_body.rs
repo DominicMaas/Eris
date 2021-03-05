@@ -1,6 +1,6 @@
 use crate::mesh::Mesh;
 use crate::uniform_buffer::{ModelUniform, UniformBuffer};
-use crate::utils::{Vertex, SIM_SPEED, G};
+use crate::utils::{Vertex, G, SIM_SPEED};
 use cgmath::num_traits::FloatConst;
 use cgmath::{InnerSpace, Quaternion, Rad, Rotation3, Vector3};
 use std::time::Duration;
@@ -62,7 +62,6 @@ impl CBody {
         //    Rad(rotation_speed),
         //);
         //self.rotation = self.rotation * rot;
-
 
         //let force = self.mass * self.velocity
 

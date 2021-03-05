@@ -11,7 +11,7 @@ mod utils;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
-    window::{WindowBuilder},
+    window::WindowBuilder,
 };
 
 use futures::executor::block_on;

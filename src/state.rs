@@ -7,9 +7,9 @@ use crate::mesh::{DrawMesh, Mesh};
 use crate::uniform_buffer::UniformBuffer;
 use crate::utils::{Vertex, G, SIM_SCALE, SIM_SPEED};
 use crate::{render_pipeline, texture, uniform_buffer};
-use std::time::Duration;
-use cgmath::{Vector3, MetricSpace, InnerSpace, Point3, EuclideanSpace};
 use cgmath::num_traits::Pow;
+use cgmath::{EuclideanSpace, InnerSpace, MetricSpace, Point3, Vector3};
+use std::time::Duration;
 
 pub struct State {
     pub surface: wgpu::Surface,
@@ -245,7 +245,6 @@ impl State {
             &device,
         );
 
-
         bodies.push(c_body_earth);
         bodies.push(c_body_moon);
 
@@ -299,7 +298,9 @@ impl State {
             for body2 in before.iter().chain(after.iter()) {
                 let sqr_distance: f32 = (body2.position - body.position).magnitude2();
                 let force_direction: Vector3<f32> = (body2.position - body.position).normalize();
-                let force: Vector3<f32> = force_direction * body.standard_gravitational_parameter() * body2.mass / sqr_distance;
+                let force: Vector3<f32> =
+                    force_direction * body.standard_gravitational_parameter() * body2.mass
+                        / sqr_distance;
                 let acceleration: Vector3<f32> = force / body.mass;
 
                 body.velocity += acceleration;

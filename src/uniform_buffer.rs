@@ -25,7 +25,7 @@ where
 {
     pub data: T,
     pub buffer: wgpu::Buffer,
-    pub bind_group: wgpu::BindGroup
+    pub bind_group: wgpu::BindGroup,
 }
 
 impl<T: Copy + bytemuck::Pod + bytemuck::Zeroable> UniformBuffer<T> {
@@ -47,26 +47,29 @@ impl<T: Copy + bytemuck::Pod + bytemuck::Zeroable> UniformBuffer<T> {
             label: Some("uniform_bind_group"),
         });
 
-        Self { data, buffer, bind_group }
+        Self {
+            data,
+            buffer,
+            bind_group,
+        }
     }
 }
 
-pub struct UniformBufferUtils { }
+pub struct UniformBufferUtils {}
 impl UniformBufferUtils {
     pub fn create_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        let bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("uniform_bind_group_layout"),
-            });
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStage::VERTEX,
+                ty: wgpu::BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("uniform_bind_group_layout"),
+        });
 
         bind_group_layout
     }
