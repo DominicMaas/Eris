@@ -28,85 +28,44 @@ fn main() {
 
     let mut state = block_on(state::State::new(&window));
     let mut last_update = Instant::now();
-    let mut is_resumed = true;
-    let mut is_focused = true;
-    let mut is_redraw_requested = true;
 
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = if is_resumed && is_focused {
-            ControlFlow::Poll
-        } else {
-            ControlFlow::Wait
-        };
+        *control_flow = ControlFlow::Poll;
 
         match event {
-            Event::Resumed => is_resumed = true,
-            Event::Suspended => is_resumed = false,
-            Event::RedrawRequested(wid) => {
-                if wid == window.id() {
-                    let now = Instant::now();
-                    let dt = now - last_update;
-                    last_update = now;
+            Event::RedrawRequested(_) => {
+                let now = Instant::now();
+                let dt = now - last_update;
+                last_update = now;
 
-                    state.update(dt);
+                state.update(dt);
 
-                    match state.render(&window) {
-                        Ok(_) => {}
-                        // Recreate the swap_chain if lost
-                        Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
-                        // The system is out of memory, we should probably quit
-                        Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                        // All other errors (Outdated, Timeout) should be resolved by the next frame
-                        Err(e) => eprintln!("{:?}", e),
-                    }
-
-                    is_redraw_requested = false;
+                match state.render(&window) {
+                    Ok(_) => {}
+                    // Recreate the swap_chain if lost
+                    Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
+                    // The system is out of memory, we should probably quit
+                    Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    // All other errors (Outdated, Timeout) should be resolved by the next frame
+                    Err(e) => eprintln!("{:?}", e),
                 }
             }
-
             Event::MainEventsCleared => {
-                if is_focused && is_resumed && !is_redraw_requested {
-                    window.request_redraw();
-                    is_redraw_requested = true;
-                } else {
-                    // Freeze time while the demo is not in the foreground
-                    last_update = Instant::now();
-                }
+                window.request_redraw();
             }
-
-            Event::DeviceEvent {
-                ref event,
-                .. // We're not using device_id currently
-            } => {
+            Event::DeviceEvent { ref event, .. } => {
                 state.device_input(event);
             }
-
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == window.id() => {
+            Event::WindowEvent { ref event, .. } => {
                 if !state.input(event) {
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                        WindowEvent::Focused(f) => is_focused = *f,
-
-                        WindowEvent::KeyboardInput { input, .. } => match input {
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            } => *control_flow = ControlFlow::Exit,
-                            _ => {}
-                        },
-
                         WindowEvent::Resized(physical_size) => {
                             state.resize(*physical_size);
                         }
-
                         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                             state.resize(**new_inner_size);
                         }
-
                         _ => {}
                     }
                 }

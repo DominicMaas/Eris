@@ -120,7 +120,7 @@ impl State {
                 .with_vertex_shader(wgpu::include_spirv!("shaders/c_body_shader.vert.spv"))
                 .with_fragment_shader(wgpu::include_spirv!("shaders/c_body_shader.frag.spv"))
                 .with_layout(&render_pipeline_layout)
-                .with_topology(wgpu::PrimitiveTopology::LineList)
+                //.with_topology(wgpu::PrimitiveTopology::LineList)
                 .build(&device)
                 .unwrap();
 
