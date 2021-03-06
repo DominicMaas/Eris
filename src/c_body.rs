@@ -1,9 +1,10 @@
 use crate::mesh::Mesh;
 use crate::texture::Texture;
 use crate::uniform_buffer::{ModelUniform, UniformBuffer};
-use crate::utils::{Vertex, G, SIM_SPEED};
+use crate::utils::{Vertex, G};
 use cgmath::num_traits::FloatConst;
-use cgmath::{Quaternion, Vector3};
+use cgmath::{Quaternion, Vector3, Vector2};
+use std::time::Duration;
 
 pub struct CBody {
     pub id: i32,
@@ -15,6 +16,7 @@ pub struct CBody {
     pub mesh: Mesh,
     pub uniform_buffer: UniformBuffer<ModelUniform>,
     pub texture: Texture,
+    pub gen: CBodyGenerator
 }
 
 impl CBody {
@@ -25,12 +27,13 @@ impl CBody {
         position: Vector3<f32>,
         velocity: Vector3<f32>,
         texture: Texture,
-        device: &wgpu::Device,
+        device: &wgpu::Device
     ) -> Self {
+        let gen = CBodyGenerator::new(radius);
+
         // Create the mesh for this body
-        let sector_count: u16 = 38;
-        let stack_count: u16 = 24;
-        let mesh = Self::build_mesh(radius, sector_count, stack_count, device);
+        let mesh = Self::build_mesh(radius, &gen, device);
+        //let mesh = Self::build_mesh_old(radius, 38, 16, device);
         let rotation: Quaternion<f32> = Quaternion::new(0.0, 0.0, 0.0, 0.0);
 
         let uniform_data = ModelUniform {
@@ -49,6 +52,7 @@ impl CBody {
             mesh,
             uniform_buffer,
             texture,
+            gen
         }
     }
 
@@ -64,7 +68,7 @@ impl CBody {
         nd.sqrt()
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: Duration) {
         //let rotation_speed_deg: f32 = 0.01;
         //let rotation_speed: f32 = rotation_speed_deg * f32::PI() / 180.0;
 
@@ -79,7 +83,7 @@ impl CBody {
         //let new_pos:  Vector3<f32> = Vector3::new(0.0, 0.01, 0.0);
         //self.position = self.position + new_pos;
 
-        self.position = self.position + (self.velocity * SIM_SPEED);
+        self.position += self.velocity; //* dt.as_secs_f32();
         //self.position = self.position + (self.velocity * _dt.as_secs_f32() * SIM_SPEED);
 
         // Update the uniform buffer
@@ -87,10 +91,146 @@ impl CBody {
             cgmath::Matrix4::from_translation(self.position) * cgmath::Matrix4::from(self.rotation);
     }
 
-    fn build_mesh(radius: f32, sector_count: u16, stack_count: u16, device: &wgpu::Device) -> Mesh {
+    fn build_mesh(radius: f32, gen: &CBodyGenerator, device: &wgpu::Device) -> Mesh {
         // Build the vertices for the mesh
         let mut vertices: Vec<Vertex> = Vec::new();
-        let mut indices: Vec<u16> = Vec::new();
+        let mut indices: Vec<u32> = Vec::new();
+
+        let mut curr_index: u32 = 0;
+
+        let half_radius: i32 = radius as i32 / 2;
+
+        for xi in -half_radius..half_radius {
+            for yi in -half_radius..half_radius as i32 {
+                for zi in -half_radius..half_radius as i32 {
+                    let x = xi as f32;
+                    let y = yi as f32;
+                    let z = zi as f32;
+
+                    let mat = gen.get_material(Vector3::new(x,y,z));
+                    if mat == 0 {
+                        continue;
+                    }
+
+                    // FRONT
+                    if gen.is_transparent(x, y, z - 1.0) {
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
+
+                        indices.push(curr_index + 0);
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 3);
+
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 2);
+                        indices.push(curr_index + 3);
+
+                        curr_index = curr_index + 4;
+                    }
+
+                    // BACK
+                    if gen.is_transparent(x, y, z + 1.0) {
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
+
+                        indices.push(curr_index + 0);
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 3);
+
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 2);
+                        indices.push(curr_index + 3);
+
+                        curr_index = curr_index + 4;
+                    }
+
+                    // Right
+                    if gen.is_transparent(x - 1.0, y, z) {
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 1.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 0.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 0.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 1.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+
+                        indices.push(curr_index + 0);
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 3);
+
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 2);
+                        indices.push(curr_index + 3);
+
+                        curr_index = curr_index + 4;
+                    }
+
+                    // Left
+                    if gen.is_transparent(x + 1.0, y, z) {
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 0.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 0.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 1.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 1.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+
+                        indices.push(curr_index + 0);
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 3);
+
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 2);
+                        indices.push(curr_index + 3);
+
+                        curr_index = curr_index + 4;
+                    }
+
+                    // Down
+                    if gen.is_transparent(x, y - 1.0, z) {
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
+
+                        indices.push(curr_index + 0);
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 3);
+
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 2);
+                        indices.push(curr_index + 3);
+
+                        curr_index = curr_index + 4;
+                    }
+
+                    // Up
+                    if gen.is_transparent(x, y + 1.0, z) {
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
+
+                        indices.push(curr_index + 0);
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 3);
+
+                        indices.push(curr_index + 1);
+                        indices.push(curr_index + 2);
+                        indices.push(curr_index + 3);
+
+                        curr_index = curr_index + 4;
+                    }
+                }
+            }
+        }
+
+        // Create the mesh for this body
+        Mesh::new(vertices, indices, device)
+    }
+
+    fn build_mesh_old(radius: f32, sector_count: u32, stack_count: u32, device: &wgpu::Device) -> Mesh {
+        // Build the vertices for the mesh
+        let mut vertices: Vec<Vertex> = Vec::new();
+        let mut indices: Vec<u32> = Vec::new();
 
         // vertex position
         let mut x: f32;
@@ -146,14 +286,14 @@ impl CBody {
             }
         }
 
-        let mut k1: u16;
-        let mut k2: u16;
+        let mut k1: u32;
+        let mut k2: u32;
 
-        for i in 0u16..stack_count {
+        for i in 0u32..stack_count {
             k1 = i * (sector_count + 1); // beginning of current stack
             k2 = k1 + sector_count + 1; // beginning of next stack
 
-            for _j in 0u16..sector_count {
+            for _j in 0u32..sector_count {
                 // 2 triangles per sector excluding first and last stacks
                 // k1 => k2 => k1+1
                 if i != 0 {
@@ -176,5 +316,44 @@ impl CBody {
 
         // Create the mesh for this body
         Mesh::new(vertices, indices, device)
+    }
+}
+
+pub struct CBodyGenerator {
+    radius: f32
+}
+impl CBodyGenerator {
+    pub fn new(radius: f32) -> Self {
+        Self {
+            radius
+        }
+    }
+
+    pub fn is_transparent(&self, x: f32, y:f32, z: f32) -> bool {
+        // Always show on the outside
+        //if x <= 0.0 || x >= self.radius || y <= 0.0 || y >= self.radius || z <= 0.0 || z >= self.radius {
+        //    return false;
+        //}
+
+        if self.get_material(Vector3::new(x,y,z)) == 0 {
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn get_material(&self, position: Vector3<f32>) -> u8 {
+
+        let half_radius: f32 = self.radius as f32 / 2.0;
+
+        let x = half_radius + position.x;
+        let y = half_radius + position.y;
+        let z = half_radius + position.z;
+
+        if ((x - self.radius / 2.0) * (x - self.radius / 2.0) + (y - self.radius / 2.0) * (y - self.radius / 2.0) + (z - self.radius / 2.0) * (z - self.radius / 2.0)).sqrt() <= self.radius / 2.0 {
+            return 1;
+        }
+
+        return 0;
     }
 }

@@ -9,7 +9,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(vertices: Vec<Vertex>, indices: Vec<u16>, device: &wgpu::Device) -> Self {
+    pub fn new(vertices: Vec<Vertex>, indices: Vec<u32>, device: &wgpu::Device) -> Self {
         // Create a vertex buffer using the vertices
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -54,7 +54,7 @@ where
         if mesh.num_indices == 0 {
             self.draw(0..mesh.num_vertices, 0..1)
         } else {
-            self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             self.draw_indexed(0..mesh.num_indices, 0, 0..1);
         }
     }

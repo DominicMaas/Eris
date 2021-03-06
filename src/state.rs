@@ -120,7 +120,7 @@ impl State {
                 .with_vertex_shader(wgpu::include_spirv!("shaders/c_body_shader.vert.spv"))
                 .with_fragment_shader(wgpu::include_spirv!("shaders/c_body_shader.frag.spv"))
                 .with_layout(&render_pipeline_layout)
-                //.with_topology(wgpu::PrimitiveTopology::LineList)
+                .with_topology(wgpu::PrimitiveTopology::LineList)
                 .build(&device)
                 .unwrap();
 
@@ -139,15 +139,15 @@ impl State {
 
         let sun = CBody::new(
             0,
-            10000000.0,
-            30.0,
+            10000.0,
+            32.0,
             cgmath::Vector3::new(0.0, 0.0, 0.0),
             cgmath::Vector3::new(0.0, 0.0, 0.0),
             sun_texture,
             &device,
         );
 
-        print!("Sun Escape Velocity: {}m/s", sun.escape_velocity());
+        print!("Sun Escape Velocity: {}m/s\n", sun.escape_velocity());
 
         let inner_texture = texture::Texture::from_bytes(
             &device,
@@ -167,27 +167,29 @@ impl State {
 
         let inner_planet = CBody::new(
             1,
-            100.0,
-            6.0,
-            cgmath::Vector3::new(60.0, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, -1.2),
+            10.0,
+            12.0,
+            cgmath::Vector3::new(64.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, -0.02795084),
             inner_texture,
             &device,
         );
 
+        print!("Inner Planet Initial Velocity: {}m/s\n", inner_planet.velocity.magnitude());
+
         let outer_planet = CBody::new(
             1,
-            100.0,
-            6.0,
-            cgmath::Vector3::new(160.0, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, -0.7),
+            2.0,
+            4.0,
+            cgmath::Vector3::new(-128.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, 0.01976423),
             outer_texture,
             &device,
         );
 
         bodies.push(sun);
         bodies.push(inner_planet);
-        //bodies.push(outer_planet);
+        bodies.push(outer_planet);
 
         // -------------- GUI ------------------ //
 
@@ -280,11 +282,6 @@ impl State {
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
-        //let io = self.gui_context.io_mut();
-        //let ui_handle = self.gui_platform.handle_event(io, &window, event);
-
-        // self.camera_controller.process_events(event)
-
         self.camera_controller.process_keyboard(event)
     }
 
@@ -308,11 +305,11 @@ impl State {
                         / sqr_distance;
                 let acceleration: Vector3<f32> = force / body.mass;
 
-                body.velocity += acceleration * dt.as_secs_f32();
+                body.velocity += acceleration;
             }
 
             // Run simulations
-            body.update();
+            body.update(dt);
 
             self.queue.write_buffer(
                 &body.uniform_buffer.buffer,
