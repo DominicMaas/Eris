@@ -7,7 +7,7 @@ use cgmath::{Quaternion, Vector3, Vector2};
 use std::time::Duration;
 
 pub struct CBody {
-    pub id: i32,
+    pub name: String,
     pub mass: f32,
     pub radius: f32,
     pub velocity: Vector3<f32>,
@@ -21,7 +21,7 @@ pub struct CBody {
 
 impl CBody {
     pub fn new(
-        id: i32,
+        name: String,
         mass: f32,
         radius: f32,
         position: Vector3<f32>,
@@ -43,7 +43,7 @@ impl CBody {
         let uniform_buffer = UniformBuffer::new(uniform_data, device);
 
         Self {
-            id,
+            name,
             mass,
             radius,
             velocity,
@@ -58,6 +58,10 @@ impl CBody {
 
     pub fn standard_gravitational_parameter(&self) -> f32 {
         G * self.mass
+    }
+
+    pub fn calculate_velocity_at_radius(&self, radius: f32) -> f32 {
+        (self.standard_gravitational_parameter() / radius).sqrt()
     }
 
     pub fn escape_velocity(&self) -> f32 {

@@ -24,8 +24,8 @@ pub struct State {
     camera_controller: camera::CameraController,
     camera_projection: camera::Projection,
     bodies: Vec<CBody>,
-    gui_context: imgui::Context,
-    gui_platform: imgui_winit_support::WinitPlatform,
+    pub(crate) gui_context: imgui::Context,
+    pub(crate) gui_platform: imgui_winit_support::WinitPlatform,
     gui_renderer: imgui_wgpu::Renderer,
     mouse_pressed: bool,
 }
@@ -138,16 +138,14 @@ impl State {
         .unwrap();
 
         let sun = CBody::new(
-            0,
-            10000.0,
+            "Main Star".to_string(),
+            1000000.0,
             32.0,
             cgmath::Vector3::new(0.0, 0.0, 0.0),
             cgmath::Vector3::new(0.0, 0.0, 0.0),
             sun_texture,
             &device,
         );
-
-        print!("Sun Escape Velocity: {}m/s\n", sun.escape_velocity());
 
         let inner_texture = texture::Texture::from_bytes(
             &device,
@@ -165,31 +163,29 @@ impl State {
         )
         .unwrap();
 
-        let inner_planet = CBody::new(
-            1,
-            10.0,
+        let planet = CBody::new(
+            "Planet".to_string(),
+            10000.0,
             12.0,
-            cgmath::Vector3::new(64.0, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, -0.02795084),
+            cgmath::Vector3::new(200.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, -sun.calculate_velocity_at_radius(200.0)),
             inner_texture,
             &device,
         );
 
-        print!("Inner Planet Initial Velocity: {}m/s\n", inner_planet.velocity.magnitude());
-
-        let outer_planet = CBody::new(
-            1,
+        let moon = CBody::new(
+            "Moon".to_string(),
+            0.1,
             2.0,
-            4.0,
-            cgmath::Vector3::new(-128.0, 0.0, 0.0),
-            cgmath::Vector3::new(0.0, 0.0, 0.01976423),
+            cgmath::Vector3::new(200.0 + 12.0, 0.0, 0.0),
+            cgmath::Vector3::new(0.0, 0.0, -planet.calculate_velocity_at_radius(12.0)),
             outer_texture,
             &device,
         );
 
         bodies.push(sun);
-        bodies.push(inner_planet);
-        bodies.push(outer_planet);
+        bodies.push(planet);
+        bodies.push(moon);
 
         // -------------- GUI ------------------ //
 
@@ -337,11 +333,37 @@ impl State {
 
         let ui = self.gui_context.frame();
         {
+            let ui_bodies = self.bodies.iter();
+            let cam = &self.camera;
+
             let window = imgui::Window::new(imgui::im_str!("Debug"));
             window
-                .size([300.0, 100.0], imgui::Condition::FirstUseEver)
+                .size([400.0, 700.0], imgui::Condition::FirstUseEver)
                 .build(&ui, || {
-                    ui.text(imgui::im_str!("Hello world!"));
+                    // All bodies
+                    for b in ui_bodies {
+                        let g = ui.begin_group();
+                        ui.text(imgui::im_str!("Body '{}':", b.name));
+                        ui.text(imgui::im_str!("Mass: {:.2} kg", b.mass));
+                        ui.text(imgui::im_str!("Radius: {:.2} m", b.radius));
+                        ui.text(imgui::im_str!("Velocity: {:.6} m/s", b.velocity.magnitude()));
+                        ui.text(imgui::im_str!("Escape Velocity: {:.6} m/s", b.escape_velocity()));
+                        ui.text(imgui::im_str!("Position: {:.2}, {:.2}, {:.2}", b.position.x, b.position.y, b.position.z));
+
+                        ui.spacing();
+                        ui.separator();
+                        ui.spacing();
+
+                        g.end(&ui);
+                    }
+
+                    let cg = ui.begin_group();
+                    ui.text(imgui::im_str!("Camera:"));
+                    ui.text(imgui::im_str!("Position: {:.2}, {:.2}, {:.2}", cam.position.x, cam.position.y, cam.position.z));
+                    ui.text(imgui::im_str!("Pitch: {:.2} rad", cam.pitch.0));
+                    ui.text(imgui::im_str!("Yaw: {:.2} rad", cam.yaw.0));
+
+                    cg.end(&ui);
                 });
         }
 

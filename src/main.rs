@@ -32,6 +32,10 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
+        // Handle guid events
+        let io = state.gui_context.io_mut();
+        state.gui_platform.handle_event(io, &window, &event);
+
         match event {
             Event::RedrawRequested(_) => {
                 let now = Instant::now();

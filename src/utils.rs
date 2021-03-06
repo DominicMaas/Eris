@@ -14,7 +14,7 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 // pub const SIM_SPEED: f32 = 1.0;
 
 //pub const G: f32 = 6.67e-11f32;
-pub const G: f32 = 0.000005;
+pub const G: f32 = 0.0000001;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
