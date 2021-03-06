@@ -59,6 +59,7 @@ impl Camera {
         // The uniform buffer
         let uniform_buffer = UniformBuffer::new(
             "Camera Uniform Buffer",
+            wgpu::ShaderStage::VERTEX,
             CameraUniform {
                 view_proj: Matrix4::identity(),
             },

@@ -40,7 +40,12 @@ impl CBody {
             model: cgmath::Matrix4::from_translation(position) * cgmath::Matrix4::from(rotation),
         };
 
-        let uniform_buffer = UniformBuffer::new("C-Body Uniform Buffer", uniform_data, device);
+        let uniform_buffer = UniformBuffer::new(
+            "C-Body Uniform Buffer",
+            wgpu::ShaderStage::VERTEX,
+            uniform_data,
+            device,
+        );
 
         Self {
             name,

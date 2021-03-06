@@ -5,7 +5,7 @@ use crate::mesh::DrawMesh;
 use crate::texture::Texture;
 use crate::{camera, render_pipeline, texture, uniform_buffer};
 use cgmath::num_traits::FloatConst;
-use cgmath::{InnerSpace, Vector3};
+use cgmath::{InnerSpace, Vector3, Rotation3};
 use imgui::FontSource;
 use std::time::Duration;
 
@@ -26,6 +26,7 @@ pub struct State {
     pub(crate) gui_platform: imgui_winit_support::WinitPlatform,
     gui_renderer: imgui_wgpu::Renderer,
     mouse_pressed: bool,
+    lights: uniform_buffer::UniformBuffer<uniform_buffer::LightUniform>,
 }
 
 impl State {
@@ -87,8 +88,18 @@ impl State {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
                     &Texture::create_bind_group_layout(&device),
-                    &uniform_buffer::UniformBufferUtils::create_bind_group_layout(&device),
-                    &uniform_buffer::UniformBufferUtils::create_bind_group_layout(&device),
+                    &uniform_buffer::UniformBufferUtils::create_bind_group_layout(
+                        wgpu::ShaderStage::VERTEX,
+                        &device,
+                    ),
+                    &uniform_buffer::UniformBufferUtils::create_bind_group_layout(
+                        wgpu::ShaderStage::VERTEX,
+                        &device,
+                    ),
+                    &uniform_buffer::UniformBufferUtils::create_bind_group_layout(
+                        wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+                        &device,
+                    ),
                 ],
                 push_constant_ranges: &[],
             });
@@ -207,6 +218,13 @@ impl State {
         let gui_renderer =
             imgui_wgpu::Renderer::new(&mut gui_context, &device, &queue, renderer_config);
 
+        let lights = uniform_buffer::UniformBuffer::new(
+            "Light Uniform Buffer",
+            wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+            uniform_buffer::LightUniform::new((2.0, 2.0, 2.0).into(), (1.0, 1.0, 1.0).into()),
+            &device,
+        );
+
         Self {
             surface,
             device,
@@ -224,6 +242,7 @@ impl State {
             gui_platform,
             gui_renderer,
             mouse_pressed: false,
+            lights,
         }
     }
 
@@ -302,6 +321,12 @@ impl State {
         // Update camera positions
         self.camera_controller.update_camera(&mut self.camera, dt);
         self.camera.update_uniforms(&self.queue);
+
+        // TEMP, THIS IS TEMP
+        // Used to test how lighting is working
+        let old_position: cgmath::Vector3<_> = self.lights.data.position.into();
+        self.lights.data.position = cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(1.0)) * old_position;
+        self.queue.write_buffer(&self.lights.buffer, 0, bytemuck::cast_slice(&[self.lights.data]));
     }
 
     pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SwapChainError> {
@@ -396,6 +421,7 @@ impl State {
             // Render bodies
             render_pass.set_pipeline(&self.c_body_pipeline);
             render_pass.set_bind_group(1, &self.camera.uniform_buffer.bind_group, &[]);
+            render_pass.set_bind_group(3, &self.lights.bind_group, &[]);
 
             for body in self.bodies.iter() {
                 render_pass.set_bind_group(0, &body.texture.bind_group.as_ref().unwrap(), &[]);
