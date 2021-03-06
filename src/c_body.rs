@@ -3,7 +3,7 @@ use crate::texture::Texture;
 use crate::uniform_buffer::{ModelUniform, UniformBuffer};
 use crate::utils::{Vertex, G};
 use cgmath::num_traits::FloatConst;
-use cgmath::{Quaternion, Vector3, Vector2};
+use cgmath::{Quaternion, Vector2, Vector3};
 use std::time::Duration;
 
 pub struct CBody {
@@ -16,7 +16,7 @@ pub struct CBody {
     pub mesh: Mesh,
     pub uniform_buffer: UniformBuffer<ModelUniform>,
     pub texture: Texture,
-    pub gen: CBodyGenerator
+    pub gen: CBodyGenerator,
 }
 
 impl CBody {
@@ -27,7 +27,7 @@ impl CBody {
         position: Vector3<f32>,
         velocity: Vector3<f32>,
         texture: Texture,
-        device: &wgpu::Device
+        device: &wgpu::Device,
     ) -> Self {
         let gen = CBodyGenerator::new(radius);
 
@@ -40,7 +40,7 @@ impl CBody {
             model: cgmath::Matrix4::from_translation(position) * cgmath::Matrix4::from(rotation),
         };
 
-        let uniform_buffer = UniformBuffer::new(uniform_data, device);
+        let uniform_buffer = UniformBuffer::new("C-Body Uniform Buffer", uniform_data, device);
 
         Self {
             name,
@@ -52,7 +52,7 @@ impl CBody {
             mesh,
             uniform_buffer,
             texture,
-            gen
+            gen,
         }
     }
 
@@ -72,7 +72,7 @@ impl CBody {
         nd.sqrt()
     }
 
-    pub fn update(&mut self, dt: Duration) {
+    pub fn update(&mut self, _dt: Duration) {
         //let rotation_speed_deg: f32 = 0.01;
         //let rotation_speed: f32 = rotation_speed_deg * f32::PI() / 180.0;
 
@@ -88,7 +88,7 @@ impl CBody {
         //self.position = self.position + new_pos;
 
         self.position += self.velocity; //* dt.as_secs_f32();
-        //self.position = self.position + (self.velocity * _dt.as_secs_f32() * SIM_SPEED);
+                                        //self.position = self.position + (self.velocity * _dt.as_secs_f32() * SIM_SPEED);
 
         // Update the uniform buffer
         self.uniform_buffer.data.model =
@@ -111,17 +111,33 @@ impl CBody {
                     let y = yi as f32;
                     let z = zi as f32;
 
-                    let mat = gen.get_material(Vector3::new(x,y,z));
+                    let mat = gen.get_material(Vector3::new(x, y, z));
                     if mat == 0 {
                         continue;
                     }
 
                     // FRONT
                     if gen.is_transparent(x, y, z - 1.0) {
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 0.0, -1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 1.0 + y, 0.0 + z),
+                            Vector3::new(0.0, 0.0, -1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 0.0 + y, 0.0 + z),
+                            Vector3::new(0.0, 0.0, -1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 0.0 + y, 0.0 + z),
+                            Vector3::new(0.0, 0.0, -1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 1.0 + y, 0.0 + z),
+                            Vector3::new(0.0, 0.0, -1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
 
                         indices.push(curr_index + 0);
                         indices.push(curr_index + 1);
@@ -136,10 +152,26 @@ impl CBody {
 
                     // BACK
                     if gen.is_transparent(x, y, z + 1.0) {
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 0.0, 1.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 0.0 + y, 1.0 + z),
+                            Vector3::new(0.0, 0.0, 1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 0.0 + y, 1.0 + z),
+                            Vector3::new(0.0, 0.0, 1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 1.0 + y, 1.0 + z),
+                            Vector3::new(0.0, 0.0, 1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 1.0 + y, 1.0 + z),
+                            Vector3::new(0.0, 0.0, 1.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
 
                         indices.push(curr_index + 0);
                         indices.push(curr_index + 1);
@@ -154,10 +186,26 @@ impl CBody {
 
                     // Right
                     if gen.is_transparent(x - 1.0, y, z) {
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 1.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 0.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 0.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 1.0 + z), Vector3::new(-1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 1.0 + y, 1.0 + z),
+                            Vector3::new(-1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 1.0 + y, 0.0 + z),
+                            Vector3::new(-1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 0.0 + y, 0.0 + z),
+                            Vector3::new(-1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 0.0 + y, 1.0 + z),
+                            Vector3::new(-1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
 
                         indices.push(curr_index + 0);
                         indices.push(curr_index + 1);
@@ -172,10 +220,26 @@ impl CBody {
 
                     // Left
                     if gen.is_transparent(x + 1.0, y, z) {
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 0.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 0.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 1.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 1.0 + z), Vector3::new(1.0, 0.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 0.0 + y, 0.0 + z),
+                            Vector3::new(1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 1.0 + y, 0.0 + z),
+                            Vector3::new(1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 1.0 + y, 1.0 + z),
+                            Vector3::new(1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 0.0 + y, 1.0 + z),
+                            Vector3::new(1.0, 0.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
 
                         indices.push(curr_index + 0);
                         indices.push(curr_index + 1);
@@ -190,10 +254,26 @@ impl CBody {
 
                     // Down
                     if gen.is_transparent(x, y - 1.0, z) {
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 0.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 0.0 + y, 1.0 + z), Vector3::new(0.0, -1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 0.0 + y, 0.0 + z),
+                            Vector3::new(0.0, -1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 0.0 + y, 0.0 + z),
+                            Vector3::new(0.0, -1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 0.0 + y, 1.0 + z),
+                            Vector3::new(0.0, -1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 0.0 + y, 1.0 + z),
+                            Vector3::new(0.0, -1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
 
                         indices.push(curr_index + 0);
                         indices.push(curr_index + 1);
@@ -208,10 +288,26 @@ impl CBody {
 
                     // Up
                     if gen.is_transparent(x, y + 1.0, z) {
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(1.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 0.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
-                        vertices.push(Vertex::with_tex_coords(Vector3::new(0.0 + x, 1.0 + y, 1.0 + z), Vector3::new(0.0, 1.0, 0.0), Vector2::new(0.0, 0.0)));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 1.0 + y, 1.0 + z),
+                            Vector3::new(0.0, 1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(1.0 + x, 1.0 + y, 0.0 + z),
+                            Vector3::new(0.0, 1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 1.0 + y, 0.0 + z),
+                            Vector3::new(0.0, 1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
+                        vertices.push(Vertex::with_tex_coords(
+                            Vector3::new(0.0 + x, 1.0 + y, 1.0 + z),
+                            Vector3::new(0.0, 1.0, 0.0),
+                            Vector2::new(0.0, 0.0),
+                        ));
 
                         indices.push(curr_index + 0);
                         indices.push(curr_index + 1);
@@ -231,7 +327,12 @@ impl CBody {
         Mesh::new(vertices, indices, device)
     }
 
-    fn build_mesh_old(radius: f32, sector_count: u32, stack_count: u32, device: &wgpu::Device) -> Mesh {
+    fn _build_mesh_old(
+        radius: f32,
+        sector_count: u32,
+        stack_count: u32,
+        device: &wgpu::Device,
+    ) -> Mesh {
         // Build the vertices for the mesh
         let mut vertices: Vec<Vertex> = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
@@ -324,22 +425,20 @@ impl CBody {
 }
 
 pub struct CBodyGenerator {
-    radius: f32
+    radius: f32,
 }
 impl CBodyGenerator {
     pub fn new(radius: f32) -> Self {
-        Self {
-            radius
-        }
+        Self { radius }
     }
 
-    pub fn is_transparent(&self, x: f32, y:f32, z: f32) -> bool {
+    pub fn is_transparent(&self, x: f32, y: f32, z: f32) -> bool {
         // Always show on the outside
         //if x <= 0.0 || x >= self.radius || y <= 0.0 || y >= self.radius || z <= 0.0 || z >= self.radius {
         //    return false;
         //}
 
-        if self.get_material(Vector3::new(x,y,z)) == 0 {
+        if self.get_material(Vector3::new(x, y, z)) == 0 {
             return true;
         }
 
@@ -347,14 +446,18 @@ impl CBodyGenerator {
     }
 
     pub fn get_material(&self, position: Vector3<f32>) -> u8 {
-
         let half_radius: f32 = self.radius as f32 / 2.0;
 
         let x = half_radius + position.x;
         let y = half_radius + position.y;
         let z = half_radius + position.z;
 
-        if ((x - self.radius / 2.0) * (x - self.radius / 2.0) + (y - self.radius / 2.0) * (y - self.radius / 2.0) + (z - self.radius / 2.0) * (z - self.radius / 2.0)).sqrt() <= self.radius / 2.0 {
+        if ((x - self.radius / 2.0) * (x - self.radius / 2.0)
+            + (y - self.radius / 2.0) * (y - self.radius / 2.0)
+            + (z - self.radius / 2.0) * (z - self.radius / 2.0))
+            .sqrt()
+            <= self.radius / 2.0
+        {
             return 1;
         }
 

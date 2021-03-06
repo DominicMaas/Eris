@@ -1,8 +1,10 @@
+use crate::uniform_buffer::{CameraUniform, UniformBuffer};
 use crate::utils::OPENGL_TO_WGPU_MATRIX;
-use cgmath::{Angle, EuclideanSpace, InnerSpace, Matrix4, Point3, Rad, Vector3};
+use cgmath::num_traits::FloatConst;
+use cgmath::{Angle, EuclideanSpace, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Vector3};
 use std::f32::consts::FRAC_PI_2;
 use std::time::Duration;
-use winit::event::{ElementState, VirtualKeyCode, WindowEvent, KeyboardInput};
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 /// Holds the current projection of the program, this needs to be updated
 /// whenever the window size changes
@@ -47,16 +49,53 @@ pub struct Camera {
 
     pub yaw: Rad<f32>,
     pub pitch: Rad<f32>,
+
+    pub projection: Projection,
+    pub uniform_buffer: UniformBuffer<CameraUniform>,
 }
 
 impl Camera {
+    pub fn new(position: Vector3<f32>, projection: Projection, device: &wgpu::Device) -> Self {
+        // The uniform buffer
+        let uniform_buffer = UniformBuffer::new(
+            "Camera Uniform Buffer",
+            CameraUniform {
+                view_proj: Matrix4::identity(),
+            },
+            &device,
+        );
+
+        Self {
+            position,
+            front: (0.0, 0.0, 0.0).into(), // Where the camera is looking (takes into account rotation)
+            up: (0.0, 0.0, 0.0).into(),
+            world_up: (0.0, 1.0, 0.0).into(),
+            right: (0.0, 0.0, 0.0).into(),
+            yaw: cgmath::Rad(-90.0 / 180.0 * f32::PI()), // Look left or right
+            pitch: cgmath::Rad(0.0),                     // Look Up / Down
+            projection,
+            uniform_buffer,
+        }
+    }
+
     /// Calculate the view matrix for the camera
-    pub fn calc_matrix(&self) -> cgmath::Matrix4<f32> {
+    fn calc_matrix(&self) -> cgmath::Matrix4<f32> {
         Matrix4::look_at_rh(
             Point3::from_vec(self.position),
             Point3::from_vec(self.position + self.front),
             self.up,
         )
+    }
+
+    /// Update the uniforms for the camera, and write to the GPU
+    pub fn update_uniforms(&mut self, queue: &wgpu::Queue) {
+        self.uniform_buffer.data.view_proj = self.projection.calc_matrix() * self.calc_matrix();
+
+        queue.write_buffer(
+            &self.uniform_buffer.buffer,
+            0,
+            bytemuck::cast_slice(&[self.uniform_buffer.data]),
+        );
     }
 }
 
@@ -99,11 +138,11 @@ impl CameraController {
         match event {
             WindowEvent::KeyboardInput {
                 input:
-                KeyboardInput {
-                    state,
-                    virtual_keycode: Some(keycode),
-                    ..
-                },
+                    KeyboardInput {
+                        state,
+                        virtual_keycode: Some(keycode),
+                        ..
+                    },
                 ..
             } => {
                 let is_pressed = *state == ElementState::Pressed;

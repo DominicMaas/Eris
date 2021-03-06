@@ -19,10 +19,8 @@ pub struct State {
     pub render_pipeline: wgpu::RenderPipeline,
     c_body_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
-    uniform_buffer: uniform_buffer::UniformBuffer<uniform_buffer::CameraUniform>,
     camera: camera::Camera,
     camera_controller: camera::CameraController,
-    camera_projection: camera::Projection,
     bodies: Vec<CBody>,
     pub(crate) gui_context: imgui::Context,
     pub(crate) gui_platform: imgui_winit_support::WinitPlatform,
@@ -68,32 +66,20 @@ impl State {
 
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        // The main camera
-        let camera_projection = camera::Projection::new(
-            sc_desc.width,
-            sc_desc.height,
-            cgmath::Rad(70.0 / 180.0 * f32::PI()),
-            0.01,
-            1000.0,
-        );
-        let camera_controller = camera::CameraController::new(20.0, 0.1);
-        let camera = camera::Camera {
-            position: (0.0, 0.0, 0.0).into(), // Position of camera
-            front: (0.0, 0.0, 0.0).into(), // Where the camera is looking (takes into account rotation)
-            up: (0.0, 0.0, 0.0).into(),
-            world_up: (0.0, 1.0, 0.0).into(),
-            right: (0.0, 0.0, 0.0).into(),
-            yaw: cgmath::Rad(-90.0 / 180.0 * f32::PI()), // Look left or right
-            pitch: cgmath::Rad(0.0),                     // Look Up / Down
-        };
-
-        // The uniform buffer
-        let uniform_buffer = uniform_buffer::UniformBuffer::new(
-            uniform_buffer::CameraUniform {
-                view_proj: camera_projection.calc_matrix() * camera.calc_matrix(),
-            },
+        // Setup the main camera
+        let camera = camera::Camera::new(
+            (0.0, 0.0, 0.0).into(),
+            camera::Projection::new(
+                sc_desc.width,
+                sc_desc.height,
+                cgmath::Rad(70.0 / 180.0 * f32::PI()),
+                0.01,
+                1000.0,
+            ),
             &device,
         );
+
+        let camera_controller = camera::CameraController::new(32.0, 0.2);
 
         // Pipeline layout
         let render_pipeline_layout =
@@ -120,7 +106,7 @@ impl State {
                 .with_vertex_shader(wgpu::include_spirv!("shaders/c_body_shader.vert.spv"))
                 .with_fragment_shader(wgpu::include_spirv!("shaders/c_body_shader.frag.spv"))
                 .with_layout(&render_pipeline_layout)
-                .with_topology(wgpu::PrimitiveTopology::LineList)
+                //.with_topology(wgpu::PrimitiveTopology::LineList)
                 .build(&device)
                 .unwrap();
 
@@ -231,10 +217,8 @@ impl State {
             render_pipeline,
             c_body_pipeline,
             depth_texture,
-            uniform_buffer,
             camera,
             camera_controller,
-            camera_projection,
             bodies,
             gui_context,
             gui_platform,
@@ -254,7 +238,8 @@ impl State {
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
 
         // The screen projection needs to be updated
-        self.camera_projection
+        self.camera
+            .projection
             .resize(self.sc_desc.width, self.sc_desc.height);
     }
 
@@ -269,7 +254,7 @@ impl State {
             }
             DeviceEvent::MouseMotion { delta } => {
                 //if self.mouse_pressed {
-                    self.camera_controller.process_mouse(delta.0, delta.1);
+                self.camera_controller.process_mouse(delta.0, delta.1);
                 //}
                 true
             }
@@ -316,13 +301,7 @@ impl State {
 
         // Update camera positions
         self.camera_controller.update_camera(&mut self.camera, dt);
-        self.uniform_buffer.data.view_proj =
-            self.camera_projection.calc_matrix() * self.camera.calc_matrix();
-        self.queue.write_buffer(
-            &self.uniform_buffer.buffer,
-            0,
-            bytemuck::cast_slice(&[self.uniform_buffer.data]),
-        );
+        self.camera.update_uniforms(&self.queue);
     }
 
     pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SwapChainError> {
@@ -346,9 +325,20 @@ impl State {
                         ui.text(imgui::im_str!("Body '{}':", b.name));
                         ui.text(imgui::im_str!("Mass: {:.2} kg", b.mass));
                         ui.text(imgui::im_str!("Radius: {:.2} m", b.radius));
-                        ui.text(imgui::im_str!("Velocity: {:.6} m/s", b.velocity.magnitude()));
-                        ui.text(imgui::im_str!("Escape Velocity: {:.6} m/s", b.escape_velocity()));
-                        ui.text(imgui::im_str!("Position: {:.2}, {:.2}, {:.2}", b.position.x, b.position.y, b.position.z));
+                        ui.text(imgui::im_str!(
+                            "Velocity: {:.6} m/s",
+                            b.velocity.magnitude()
+                        ));
+                        ui.text(imgui::im_str!(
+                            "Escape Velocity: {:.6} m/s",
+                            b.escape_velocity()
+                        ));
+                        ui.text(imgui::im_str!(
+                            "Position: {:.2}, {:.2}, {:.2}",
+                            b.position.x,
+                            b.position.y,
+                            b.position.z
+                        ));
 
                         ui.spacing();
                         ui.separator();
@@ -359,7 +349,12 @@ impl State {
 
                     let cg = ui.begin_group();
                     ui.text(imgui::im_str!("Camera:"));
-                    ui.text(imgui::im_str!("Position: {:.2}, {:.2}, {:.2}", cam.position.x, cam.position.y, cam.position.z));
+                    ui.text(imgui::im_str!(
+                        "Position: {:.2}, {:.2}, {:.2}",
+                        cam.position.x,
+                        cam.position.y,
+                        cam.position.z
+                    ));
                     ui.text(imgui::im_str!("Pitch: {:.2} rad", cam.pitch.0));
                     ui.text(imgui::im_str!("Yaw: {:.2} rad", cam.yaw.0));
 
@@ -400,7 +395,7 @@ impl State {
 
             // Render bodies
             render_pass.set_pipeline(&self.c_body_pipeline);
-            render_pass.set_bind_group(1, &self.uniform_buffer.bind_group, &[]);
+            render_pass.set_bind_group(1, &self.camera.uniform_buffer.bind_group, &[]);
 
             for body in self.bodies.iter() {
                 render_pass.set_bind_group(0, &body.texture.bind_group.as_ref().unwrap(), &[]);

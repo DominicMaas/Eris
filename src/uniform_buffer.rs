@@ -18,6 +18,19 @@ pub struct ModelUniform {
 unsafe impl bytemuck::Zeroable for ModelUniform {}
 unsafe impl bytemuck::Pod for ModelUniform {}
 
+// main.rs
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+struct LightUniform {
+    pub position: cgmath::Vector3<f32>,
+    // Due to uniforms requiring 16 byte (4 float) spacing, we need to use a padding field here
+    _padding: u32,
+    pub color: cgmath::Vector3<f32>,
+}
+
+unsafe impl bytemuck::Zeroable for LightUniform {}
+unsafe impl bytemuck::Pod for LightUniform {}
+
 // A holder for a uniform buffer, contains the data and raw buffer
 pub struct UniformBuffer<T>
 where
@@ -31,9 +44,9 @@ where
 impl<T: Copy + bytemuck::Pod + bytemuck::Zeroable> UniformBuffer<T> {
     //noinspection RsBorrowChecker
     /// Crate a new uniform buffer to store data of type
-    pub fn new(data: T, device: &wgpu::Device) -> Self {
+    pub fn new(name: &str, data: T, device: &wgpu::Device) -> Self {
         let buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Uniform Buffer"),
+            label: Some(name),
             contents: bytemuck::cast_slice(&[data]),
             usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::UNIFORM,
         });

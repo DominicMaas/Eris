@@ -6,15 +6,8 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
-/// The scale of this simulation, stuff will get messy if we scale realtime
-/// This gets applied to all real life calculations
-// pub const SIM_SCALE: f32 = 0.0001;
-
-/// The speed of this simulation, by default it is realtime, which does not help at all
-// pub const SIM_SPEED: f32 = 1.0;
-
-//pub const G: f32 = 6.67e-11f32;
-pub const G: f32 = 0.0000001;
+/// This custom universe uses this G
+pub const G: f32 = 1.0e-7;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]

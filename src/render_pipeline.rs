@@ -46,6 +46,7 @@ impl<'a> RenderPipelineBuilder<'a> {
         self
     }
 
+    #[allow(dead_code)]
     pub fn with_topology(&mut self, topology: wgpu::PrimitiveTopology) -> &mut Self {
         self.primitive_topology = topology;
         self
@@ -75,6 +76,7 @@ impl<'a> RenderPipelineBuilder<'a> {
                 .take()
                 .context("Please include a vertex shader")?,
         );
+
         let fs_module = device.create_shader_module(
             &self
                 .fragment_shader_source
@@ -123,20 +125,6 @@ impl<'a> RenderPipelineBuilder<'a> {
                 }],
             }),
         });
-
-        /* let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: wgpu::CullMode::Back,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-                clamp_depth: false,
-            }),
-
-
-        });*/
 
         Ok(pipeline)
     }
