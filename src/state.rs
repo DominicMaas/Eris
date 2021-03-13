@@ -5,7 +5,7 @@ use crate::mesh::DrawMesh;
 use crate::texture::Texture;
 use crate::{camera, render_pipeline, texture, uniform_buffer};
 use cgmath::num_traits::FloatConst;
-use cgmath::{InnerSpace, Vector3, Rotation3};
+use cgmath::{InnerSpace, Rotation3, Vector3};
 use imgui::FontSource;
 use std::time::Duration;
 
@@ -325,8 +325,14 @@ impl State {
         // TEMP, THIS IS TEMP
         // Used to test how lighting is working
         let old_position: cgmath::Vector3<_> = self.lights.data.position.into();
-        self.lights.data.position = cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(1.0)) * old_position;
-        self.queue.write_buffer(&self.lights.buffer, 0, bytemuck::cast_slice(&[self.lights.data]));
+        self.lights.data.position =
+            cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(1.0))
+                * old_position;
+        self.queue.write_buffer(
+            &self.lights.buffer,
+            0,
+            bytemuck::cast_slice(&[self.lights.data]),
+        );
     }
 
     pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SwapChainError> {

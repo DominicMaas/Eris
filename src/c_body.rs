@@ -447,7 +447,7 @@ impl CBodyGenerator {
             return true;
         }
 
-        return false;
+        return true;
     }
 
     pub fn get_material(&self, position: Vector3<f32>) -> u8 {
